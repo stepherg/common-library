@@ -49,7 +49,7 @@
 #define VC_LOCK() {int rc = pthread_mutex_lock(&vcmutex); (void)rc;}
 #define VC_UNLOCK() {pthread_mutex_unlock(&vcmutex);}
 
-extern void rbusFilter_InitFromMessage(rbusFilter_t* filter, rbusMessage msg);
+#include "ccsp_rbus_serializer.h"
 
 static int              vcinit      = 0;
 static int              vcrunning   = 0;
@@ -223,7 +223,7 @@ static int rbusValueChange_getFilterResult(ValueChangeRecord* rec, parameterValS
     }
 }
 
-void rbusFilter_AppendToMessage(rbusFilter_t filter, rbusMessage msg);/*from librbus.so*/
+/* rbusFilter_AppendToMessage provided by ccsp_rbus_serializer.h */
 
 static void rbusValueChange_handlePublish(ValueChangeRecord* rec, parameterValStruct_t* val, int filterResult)
 {
@@ -258,7 +258,7 @@ static void rbusValueChange_handlePublish(ValueChangeRecord* rec, parameterValSt
     if(rec->filter)
     {
         rbusMessage_SetInt32(msg, 1);
-        rbusFilter_AppendToMessage(rec->filter, msg);
+        ccsp_rbusFilter_AppendToMessage(rec->filter, msg);
     }
     else
     {

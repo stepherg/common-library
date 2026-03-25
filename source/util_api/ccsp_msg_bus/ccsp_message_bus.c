@@ -90,8 +90,7 @@ extern int   CcspBaseIf_timeout_getval_seconds;
 extern int   deadlock_detection_enable;
 extern DEADLOCK_ARRAY*  deadlock_detection_log;
 extern void* CcspBaseIf_Deadlock_Detection_Thread(void *);
-extern void rbusFilter_InitFromMessage(rbusFilter_t* filter, rbusMessage msg);
-extern void rbusEventData_appendToMessage(rbusEvent_t* event, rbusFilter_t filter, uint32_t interval, uint32_t duration, int32_t componentId, rbusMessage msg);
+#include "ccsp_rbus_serializer.h"
 // GLOBAL VAR
 static CCSP_MESSAGE_BUS_INFO* s_bus_info = NULL;
 
@@ -139,7 +138,7 @@ static rbusError_t       ccsp_rbus_setAttributes_handler(rbusHandle_t handle, ch
 static rbusError_t       ccsp_rbus_paramValueChangeSignal_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
 static int               analyze_reply(DBusMessage*, DBusMessage*, DBusMessage**);
 static void Ccsp_Rbus_ReadPayload(rbusMessage payload, int32_t* componentId, int32_t* interval, int32_t* duration, rbusFilter_t* filter);
-extern void rbusPropertyList_appendToMessage(rbusProperty_t prop, rbusMessage msg);
+/* rbusPropertyList_appendToMessage provided by ccsp_rbus_serializer.h (included above) */
 
 // External Interface, defined in ccsp_message_bus.h
 /*
@@ -2059,7 +2058,7 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
                                     event.type = RBUS_EVENT_INITIAL_VALUE;
                                     event.data = data;
                                     rbusMessage_SetInt32(*response, 1); /* Based on this value initial value will be published to the consumer */
-                                    rbusEventData_appendToMessage(&event, filter, interval, duration, componentId, *response);
+                                    ccsp_rbusEventData_appendToMessage(&event, filter, interval, duration, componentId, *response);
                                 }
                             }
                             if(req)
@@ -2282,7 +2281,7 @@ ccsp_rbus_setParameterValues_handler
                 }
             }
         }
-        rbusPropertyList_appendToMessage(properties, *response);
+        ccsp_rbusPropertyList_appendToMessage(properties, *response);
         rbusProperty_Release(properties);
     }
     if(invalidParameterName != NULL)
@@ -2760,7 +2759,7 @@ static void Ccsp_Rbus_ReadPayload(
         rbusMessage_GetInt32(payload, duration);
         rbusMessage_GetInt32(payload, &hasFilter);
         if(hasFilter)
-            rbusFilter_InitFromMessage(filter, payload);
+            ccsp_rbusFilter_InitFromMessage(filter, payload);
     }
 }
 

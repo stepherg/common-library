@@ -60,9 +60,7 @@ typedef struct sRecord
     int32_t duration;
 } sRecord;
 
-void rbusFilter_AppendToMessage(rbusFilter_t filter, rbusMessage msg);/*from librbus.so*/
-void rbusEventData_appendToMessage(rbusEvent_t* event, rbusFilter_t filter, uint32_t interval,
-         uint32_t duration, int32_t componentId, rbusMessage msg);
+#include "ccsp_rbus_serializer.h"
 static void init_thread(sRecord* rec)
 {
     pthread_mutexattr_t attrib;
@@ -264,7 +262,7 @@ static void* rbusInterval_PublishingThreadFunc(void *rec)
                 /* Update event type after duration timeout*/
                 event.type = RBUS_EVENT_DURATION_COMPLETE;
             }
-            rbusEventData_appendToMessage(&event, sub_rec->filter, sub_rec->interval, sub_rec->duration, sub_rec->componentId, msg);
+            ccsp_rbusEventData_appendToMessage(&event, sub_rec->filter, sub_rec->interval, sub_rec->duration, sub_rec->componentId, msg);
             CcspTraceDebug(("%s: publising event %s to listener %s componentId %d\n", __FUNCTION__,
                         sub_rec->parameter, sub_rec->listener, sub_rec->componentId));
             err = rbus_publishSubscriberEvent(

@@ -28,21 +28,22 @@
 - [ ] 5.2 Wire `eventSubHandler` into event-typed data element registrations
 - [ ] 5.3 Update `ccsp_rbus_subscription.c` to work with the new handler-based subscription flow
 
-## 6. Refactor Event Publishing
-- [ ] 6.1 In `ccsp_rbus_value_change.c` — replace `rbusEventData_appendToMessage` + raw message send with `rbusEvent_Publish()` using `rbusObject_t` payload; remove `extern` declarations of private functions
-- [ ] 6.2 In `ccsp_rbus_intervalsubscription.c` — replace `rbusEventData_appendToMessage` + `rbusFilter_AppendToMessage` with `rbusEvent_Publish()`; remove private function declarations
-- [ ] 6.3 In `ccsp_message_bus.c` — remove all remaining `extern` declarations of rbus-private serialization functions
+## 6. Eliminate Private Serialization Dependencies
+_Approach: created `ccsp_rbus_serializer.c/.h` — local reimplementations of the rbus-internal serialization codec using only public APIs (`rbus_value.h`, `rbus_property.h`, `rbus_object.h`, `rbus_filter.h`, `rbus_buffer.h`, `rtMessage.h`). Wire format is identical, so consumers see no change. Switching to `rbusEvent_Publish()` was deferred because it changes pub/sub semantics (broadcast vs. targeted) and risks regressions for interval-based subscriptions._
+- [x] 6.1 In `ccsp_rbus_value_change.c` — replace `extern rbusFilter_InitFromMessage` and inline `rbusFilter_AppendToMessage` with local `ccsp_rbusFilter_*` functions
+- [x] 6.2 In `ccsp_rbus_intervalsubscription.c` — replace `rbusFilter_AppendToMessage` + `rbusEventData_appendToMessage` with local `ccsp_rbusEventData_appendToMessage`
+- [x] 6.3 In `ccsp_message_bus.c` — replace all `extern` declarations of rbus-private serialization functions with `#include "ccsp_rbus_serializer.h"`
 
 ## 7. Remove Private API Dependencies
-- [ ] 7.1 Remove `extern void rbusFilter_InitFromMessage(...)` declarations from all files
-- [ ] 7.2 Remove `extern void rbusEventData_appendToMessage(...)` declarations from all files
+- [x] 7.1 Remove `extern void rbusFilter_InitFromMessage(...)` declarations from all files
+- [x] 7.2 Remove `extern void rbusEventData_appendToMessage(...)` declarations from all files
 - [x] 7.3 Remove `extern void rbusObject_initFromMessage(...)` / `rbusObject_appendToMessage(...)` declarations
-- [ ] 7.4 Remove `extern void rbusPropertyList_appendToMessage(...)` declaration
-- [ ] 7.5 Remove inline `void rbusFilter_AppendToMessage(...)` declarations from value_change and intervalsubscription files
+- [x] 7.4 Remove `extern void rbusPropertyList_appendToMessage(...)` declaration
+- [x] 7.5 Remove inline `void rbusFilter_AppendToMessage(...)` declarations from value_change and intervalsubscription files
 
 ## 8. Verification
 - [ ] 8.1 Confirm the project compiles without unresolved symbols
-- [ ] 8.2 Grep the entire source tree for `extern.*rbus.*appendToMessage\|extern.*rbus.*initFromMessage\|extern.*rbus.*InitFromMessage\|extern.*rbus.*AppendToMessage` — expect zero matches
+- [x] 8.2 Grep the entire source tree for `extern.*rbus.*appendToMessage\|extern.*rbus.*initFromMessage\|extern.*rbus.*InitFromMessage\|extern.*rbus.*AppendToMessage` — expect zero matches
 - [ ] 8.3 Run existing unit/integration tests — all MUST pass
 - [ ] 8.4 Verify CCSP components that link against ccsp-common-library compile without changes
 - [ ] 8.5 End-to-end validation: verify GetParameterValues, SetParameterValues, GetParameterNames, subscriptions, and table operations work on a reference platform
