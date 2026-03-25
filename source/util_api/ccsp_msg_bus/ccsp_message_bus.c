@@ -1835,75 +1835,7 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
     {
         if(!strncmp(method, METHOD_GETPARAMETERVALUES, MAX_METHOD_NAME_LENGTH) && func->getParameterValues)
         {
-            int result = 0, i =0, size =0;
-            char **parameterNames = 0;
-            unsigned int writeID = DSLH_MPA_ACCESS_CONTROL_ACS;
-            const char *writeID_str = NULL;
-            int32_t param_size = 0, tmp = 0;
-            parameterValStruct_t **val = 0;
-            rbusMessage req;
-            if(rbusMessage_GetString(request, &writeID_str) == RT_OK)
-                writeID = get_writeid(writeID_str);
-            rbusMessage_GetInt32(request, &size);
-            rbusMessage_Init(&req);
-
-            for(i = 0; i < size; i++)
-            {
-                char *param_name = 0;
-                char* tmpPtr = NULL;
-                rbusMessage_GetString(request, (const char**)&param_name);
-                /* wildcard */
-                tmpPtr = strstr (param_name, "*");
-                if (tmpPtr)
-                {
-                    get_recursive_wildcard_parameterNames(bus_info,  param_name, &req, &param_size);
-                }
-                else
-                {
-                    rbusMessage_SetString(req, param_name);
-                    param_size++;
-                }
-            }
-
-            if(param_size > 0)
-            {
-                parameterNames = bus_info->mallocfunc(param_size*sizeof(char *));
-                memset(parameterNames, 0, param_size*sizeof(char *));
-            }
-            for(i = 0; i < param_size; i++)
-            {
-                parameterNames[i] = NULL;
-                if (req)
-                {
-                    rbusMessage_GetString(req, (const char**)&parameterNames[i]);
-                    CcspTraceDebug(("parameterNames[%d]: %s\n", i, parameterNames[i]));
-                }
-            }
-
-            size = 0;
-            if (parameterNames != NULL)
-            {
-                result = func->getParameterValues(writeID, parameterNames, param_size, &size, &val , func->getParameterValues_data);
-                CcspTraceDebug(("getParameterValues: size %d result %d\n", size, result));
-                bus_info->freefunc(parameterNames);
-                rbusMessage_Release(req);
-
-                rbusMessage_Init(response);
-                tmp = result;
-                rbusMessage_SetInt32(*response, tmp); //result
-                if(tmp == CCSP_SUCCESS )
-                {
-                    rbusMessage_SetInt32(*response, size);
-                    for(i = 0; i < size; i++)
-                    {
-                        CcspTraceDebug(("val[%d]->parameterName %s val[%d]->parameterValue %s\n", i, val[i]->parameterName, i, val[i]->parameterValue));
-                        rbusMessage_SetString(*response, val[i]->parameterName);
-                        rbusMessage_SetInt32(*response, val[i]->type);
-                        rbusMessage_SetString(*response, val[i]->parameterValue);
-                    }
-                }
-                free_parameterValStruct_t(bus_info, size, val);
-            }
+            return ccsp_rbus_getParameterValues_handler(bus_info, func, request, response);
         }
         else if(!strncmp(method, METHOD_GETHEALTH, MAX_METHOD_NAME_LENGTH) && func->getHealth)
         {
@@ -1916,142 +1848,7 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
         }
         else if(!strncmp(method, METHOD_SETPARAMETERVALUES, MAX_METHOD_NAME_LENGTH) && func->setParameterValues)
         {
-            int param_size = 0, i = 0, result = 0,size = 0, rollBack = 0;
-            parameterValStruct_t * parameterVal = 0;
-            unsigned int writeID = DSLH_MPA_ACCESS_CONTROL_CLI;
-            const char * writeID_str = NULL;
-            parameterValStruct_t **cachedVal = 0;
-            char **cachedParameterNames = 0;
-            int32_t sessionId = 0, tmp = 0;
-            dbus_bool commit = 0;
-            char *invalidParameterName = 0;
-            char *cachedFailedElement = NULL;
-            int32_t dataType = 0;
-            int32_t err = 0;
-            int32_t ret_code = 0;
-            char *tmpParamVal = NULL;
-            rbusValue_t value = NULL;
-            rbusProperty_t properties = NULL;
-            rbusProperty_t cachedProperties = NULL;
-            rbusMessage_GetInt32(request, &sessionId);
-            if(rbusMessage_GetString(request, &writeID_str) == RT_OK)
-                writeID = string_to_writeid(writeID_str);
-            rbusMessage_GetInt32(request, &rollBack);
-            rbusMessage_GetInt32(request, (int32_t*)&param_size);
-            if(param_size > 0)
-            {
-                parameterVal = bus_info->mallocfunc(param_size*sizeof(parameterValStruct_t ));
-                memset(parameterVal, 0, param_size*sizeof(parameterValStruct_t ));
-                cachedParameterNames = bus_info->mallocfunc(param_size*sizeof(char *));
-                memset(cachedParameterNames, 0, param_size*sizeof(char *));
-            }
-            for(i = 0; i < param_size; i++)
-            {
-                parameterVal[i].parameterName = NULL;
-                parameterVal[i].parameterValue = NULL;
-                cachedParameterNames[i] = NULL;
-                rbusMessage_GetString(request, (const char**)&parameterVal[i].parameterName);
-                rbusMessage_GetInt32(request, &dataType);
-                if (dataType < RBUS_BOOLEAN)
-                {
-                    parameterVal[i].type = dataType;
-                    rbusMessage_GetString(request, (const char**)&tmpParamVal);
-                    if(tmpParamVal)
-                    {
-                        parameterVal[i].parameterValue = bus_info->mallocfunc((strlen(tmpParamVal)+1));
-                        if(parameterVal[i].parameterValue)
-                        {
-                            memset(parameterVal[i].parameterValue,0,(strlen(tmpParamVal)+1));
-                            strncpy(parameterVal[i].parameterValue,tmpParamVal,strlen(tmpParamVal));
-                        }
-                    }
-                }
-                else
-                {
-                    ccsp_handle_rbus_component_reply (bus_info, request, (rbusValueType_t) dataType, &parameterVal[i].type, &parameterVal[i].parameterValue);
-                }
-                cachedParameterNames[i] = strdup(parameterVal[i].parameterName);
-            }
-            const char *str = NULL;
-            rbusMessage_GetString(request, &str); //commit
-            commit = (str && strcasecmp(str, "TRUE") == 0)?1:0;
-            if ((rollBack == 1) && func->getParameterValues)
-            {
-                 ret_code = func->getParameterValues(writeID, cachedParameterNames, param_size, &size, &cachedVal, func->getParameterValues_data);
-                 if(ret_code != CCSP_SUCCESS)
-                 {
-                     CcspTraceWarning(("Retrieving values to current data failed with result %d\n", ret_code));
-                 }
-            }
-            result = func->setParameterValues(sessionId, writeID, parameterVal, param_size, commit,&invalidParameterName, func->setParameterValues_data);
-            if(result != CCSP_SUCCESS)
-                CcspTraceWarning(("setParameterValues failed with result %d\n", result));
-            // Based on study done on RDKB-58643, Rolling back values only if error is CCSP_ERR_INVALID_PARAMETER_VALUE.
-            if(result == CCSP_ERR_INVALID_PARAMETER_VALUE && rollBack == 1)
-            {
-                for(i=0; i < size; i++)
-                {
-                     err = func->setParameterValues(sessionId, writeID, cachedVal[i], 1, commit,&cachedFailedElement, func->setParameterValues_data);
-                     if(err != CCSP_SUCCESS && cachedFailedElement != NULL)
-                     {
-                        CcspTraceWarning(("Reverting paramValues of %s to initial values failed\n",cachedFailedElement));
-                     }
-                }
-                if(cachedFailedElement != NULL)
-                     bus_info->freefunc(cachedFailedElement);
-            }
-            rbusMessage_Init(response);
-            tmp = result;
-            rbusMessage_SetInt32(*response, tmp); //result
-            if (result == CCSP_SUCCESS && ret_code == CCSP_SUCCESS)
-            {
-                for(i =0; i < size; i++)
-                {
-                    if(cachedVal[i]->parameterValue != NULL)
-                    {
-                        rbusValueType_t type = rbus_GetDataType(cachedVal[i]->type);
-                        rbusValue_Init(&value);
-                        rbusValue_SetFromString(value, type, cachedVal[i]->parameterValue);
-                        rbusProperty_Init(&cachedProperties, cachedVal[i]->parameterName, value);
-                        rbusValue_Release(value);
-                        if(properties == NULL)
-                             properties = cachedProperties;
-                        else
-                        {
-                             rbusProperty_Append(properties, cachedProperties);
-                             rbusProperty_Release(cachedProperties);
-                        }
-                    }
-                }
-                rbusPropertyList_appendToMessage(properties, *response);
-                rbusProperty_Release(properties);
-            }
-            if(invalidParameterName != NULL)
-                rbusMessage_SetString(*response, invalidParameterName); //invalid param
-            else
-                rbusMessage_SetString(*response, ""); //invalid param
-            for(i = 0; i < param_size; i++)
-            {
-                if(parameterVal[i].parameterValue)
-                {
-                    bus_info->freefunc(parameterVal[i].parameterValue);
-                }
-            }
-            if (cachedParameterNames != NULL)
-            {
-                for (i = 0; i < param_size; i++)
-                {
-                    if (cachedParameterNames[i] != NULL)
-                    {
-                        free(cachedParameterNames[i]);
-                    }
-                }
-                bus_info->freefunc(cachedParameterNames);
-            }
-            free_parameterValStruct_t(bus_info, size, cachedVal);
-            bus_info->freefunc(parameterVal);
-            bus_info->freefunc(invalidParameterName);
-            return DBUS_HANDLER_RESULT_HANDLED;
+            return ccsp_rbus_setParameterValues_handler(bus_info, func, request, response);
         }
         else if(!strncmp(method, METHOD_COMMIT, MAX_METHOD_NAME_LENGTH) && func->setCommit)
         {
@@ -2059,106 +1856,7 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
         }
         else if(!strncmp(method, METHOD_GETPARAMETERNAMES, MAX_METHOD_NAME_LENGTH) && func->getParameterNames)
         {
-            int i = 0,size = 0;
-            int32_t requestedDepth, rowNamesOnly = 0, result = 0, tmp = 0;
-            char * parameterName = 0;
-            parameterInfoStruct_t **val = 0;
-            rbusMessage_GetString(request, (const char**)&parameterName);
-            rbusMessage_GetInt32(request, &requestedDepth); 
-            rbusMessage_GetInt32(request, &rowNamesOnly);
-            rbusMessage_Init(response);
-            result = func->getParameterNames(parameterName, requestedDepth == -1, &size, &val, func->getParameterNames_data );
-            tmp = result;
-            rbusMessage_SetInt32(*response, tmp); //result
-            if( tmp == CCSP_SUCCESS)
-            {
-                int actualCount = 0;
-                char buf[CCSP_BASE_PARAM_LENGTH];
-                int inst_num;
-                int type;
-                                
-                if(rowNamesOnly)
-                {
-                    for(i = 0; i < size; i++)
-                    {
-                        type = CcspBaseIf_getObjType(parameterName, val[i]->parameterName, &inst_num, buf);
-                        if(type == CCSP_BASE_INSTANCE)
-                            actualCount++;
-                    }
-                }
-                else
-                {
-                    actualCount = size;
-                }
-
-                rbusMessage_SetInt32(*response, actualCount);
-
-                for(i = 0; i < size; i++)
-                {
-                    
-                    type = CcspBaseIf_getObjType(parameterName, val[i]->parameterName, &inst_num, buf);
-
-                    CcspTraceDebug(("Param [%d] Name=%s, Writable=%d, Type=%d\n", i, val[i]->parameterName, val[i]->writable, type));
-
-                    if(rowNamesOnly)
-                    {
-                        if(type != CCSP_BASE_INSTANCE)
-                            continue;
-                        rbusMessage_SetInt32(*response, (int32_t)inst_num); /*instancen number*/    
-                        rbusMessage_SetString(*response, ""); /*alias -- which is unsupported in ccsp*/    
-                    }
-                    else
-                    {
-                        rbusElementType_t elemType = 0;
-                        rbusAccess_t accessFlags = 0;
-
-                        /* determine element type */
-                        if(type == CCSP_BASE_PARAM)
-                        {
-                            elemType = RBUS_ELEMENT_TYPE_PROPERTY;
-                        }
-                        else if(type == CCSP_BASE_INSTANCE)
-                        {
-                            elemType = 0; /*object*/
-                        }
-                        else if(type == CCSP_BASE_OBJECT)
-                        {
-                            /*there's no way to know completely if its a table or a plain object
-                              the writable flag can be true for some table types but not all 
-                              so the following might set static and dynamic tables (which are both read-only tables) to type object*/
-                            if(val[i]->writable)
-                                elemType = RBUS_ELEMENT_TYPE_TABLE;
-                            else
-                                elemType = 0;/*object*/
-                        }
-
-                        /* determine access flags */
-                        accessFlags = RBUS_ACCESS_GET; /*can read everything */
-
-                        if(elemType == RBUS_ELEMENT_TYPE_PROPERTY)
-                        {
-                            accessFlags |=  RBUS_ACCESS_SUBSCRIBE;  /*can subscribe to value-change events*/
-                            if(val[i]->writable)
-                                accessFlags |= RBUS_ACCESS_SET;
-                        }
-                        else if(elemType == RBUS_ELEMENT_TYPE_TABLE)
-                        {
-                            if(val[i]->writable)
-                                accessFlags |= RBUS_ACCESS_ADDROW | RBUS_ACCESS_REMOVEROW;
-                        }
-                        else /*objects or rows*/
-                        {   
-                            if(val[i]->writable)
-                                accessFlags |= RBUS_ACCESS_SET;
-                        }
-
-                        rbusMessage_SetString(*response, val[i]->parameterName);
-                        rbusMessage_SetInt32(*response, (int32_t)elemType);
-                        rbusMessage_SetInt32(*response, (int32_t)accessFlags);
-                    }
-                }
-            }
-            free_parameterInfoStruct_t(bus_info, size, val);
+            return ccsp_rbus_getParameterNames_handler(bus_info, func, request, response);
         }
         else if (!strncmp(method, METHOD_ADDTBLROW, MAX_METHOD_NAME_LENGTH) && func->AddTblRow)
         {
@@ -2580,6 +2278,342 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
             }
         }
     }
+    return 0;
+}
+
+static int
+ccsp_rbus_getParameterValues_handler
+(
+    CCSP_MESSAGE_BUS_INFO *bus_info,
+    CCSP_Base_Func_CB *func,
+    rbusMessage request,
+    rbusMessage *response
+)
+{
+    int result = 0, i = 0, size = 0;
+    char **parameterNames = 0;
+    unsigned int writeID = DSLH_MPA_ACCESS_CONTROL_ACS;
+    const char *writeID_str = NULL;
+    int32_t param_size = 0, tmp = 0;
+    parameterValStruct_t **val = 0;
+    rbusMessage req;
+    if(rbusMessage_GetString(request, &writeID_str) == RT_OK)
+        writeID = get_writeid(writeID_str);
+    rbusMessage_GetInt32(request, &size);
+    rbusMessage_Init(&req);
+
+    for(i = 0; i < size; i++)
+    {
+        char *param_name = 0;
+        char* tmpPtr = NULL;
+        rbusMessage_GetString(request, (const char**)&param_name);
+        /* wildcard */
+        tmpPtr = strstr(param_name, "*");
+        if(tmpPtr)
+        {
+            get_recursive_wildcard_parameterNames(bus_info, param_name, &req, &param_size);
+        }
+        else
+        {
+            rbusMessage_SetString(req, param_name);
+            param_size++;
+        }
+    }
+
+    if(param_size > 0)
+    {
+        parameterNames = bus_info->mallocfunc(param_size*sizeof(char *));
+        memset(parameterNames, 0, param_size*sizeof(char *));
+    }
+    for(i = 0; i < param_size; i++)
+    {
+        parameterNames[i] = NULL;
+        if(req)
+        {
+            rbusMessage_GetString(req, (const char**)&parameterNames[i]);
+            CcspTraceDebug(("parameterNames[%d]: %s\n", i, parameterNames[i]));
+        }
+    }
+
+    size = 0;
+    if(parameterNames != NULL)
+    {
+        result = func->getParameterValues(writeID, parameterNames, param_size, &size, &val, func->getParameterValues_data);
+        CcspTraceDebug(("getParameterValues: size %d result %d\n", size, result));
+        bus_info->freefunc(parameterNames);
+        rbusMessage_Release(req);
+
+        rbusMessage_Init(response);
+        tmp = result;
+        rbusMessage_SetInt32(*response, tmp);
+        if(tmp == CCSP_SUCCESS)
+        {
+            rbusMessage_SetInt32(*response, size);
+            for(i = 0; i < size; i++)
+            {
+                CcspTraceDebug(("val[%d]->parameterName %s val[%d]->parameterValue %s\n", i, val[i]->parameterName, i, val[i]->parameterValue));
+                rbusMessage_SetString(*response, val[i]->parameterName);
+                rbusMessage_SetInt32(*response, val[i]->type);
+                rbusMessage_SetString(*response, val[i]->parameterValue);
+            }
+        }
+        free_parameterValStruct_t(bus_info, size, val);
+    }
+    return 0;
+}
+
+static int
+ccsp_rbus_setParameterValues_handler
+(
+    CCSP_MESSAGE_BUS_INFO *bus_info,
+    CCSP_Base_Func_CB *func,
+    rbusMessage request,
+    rbusMessage *response
+)
+{
+    int param_size = 0, i = 0, result = 0, size = 0, rollBack = 0;
+    parameterValStruct_t * parameterVal = 0;
+    unsigned int writeID = DSLH_MPA_ACCESS_CONTROL_CLI;
+    const char * writeID_str = NULL;
+    parameterValStruct_t **cachedVal = 0;
+    char **cachedParameterNames = 0;
+    int32_t sessionId = 0, tmp = 0;
+    dbus_bool commit = 0;
+    char *invalidParameterName = 0;
+    char *cachedFailedElement = NULL;
+    int32_t dataType = 0;
+    int32_t err = 0;
+    int32_t ret_code = 0;
+    char *tmpParamVal = NULL;
+    rbusValue_t value = NULL;
+    rbusProperty_t properties = NULL;
+    rbusProperty_t cachedProperties = NULL;
+    rbusMessage_GetInt32(request, &sessionId);
+    if(rbusMessage_GetString(request, &writeID_str) == RT_OK)
+        writeID = string_to_writeid(writeID_str);
+    rbusMessage_GetInt32(request, &rollBack);
+    rbusMessage_GetInt32(request, (int32_t*)&param_size);
+    if(param_size > 0)
+    {
+        parameterVal = bus_info->mallocfunc(param_size*sizeof(parameterValStruct_t));
+        memset(parameterVal, 0, param_size*sizeof(parameterValStruct_t));
+        cachedParameterNames = bus_info->mallocfunc(param_size*sizeof(char *));
+        memset(cachedParameterNames, 0, param_size*sizeof(char *));
+    }
+    for(i = 0; i < param_size; i++)
+    {
+        parameterVal[i].parameterName = NULL;
+        parameterVal[i].parameterValue = NULL;
+        cachedParameterNames[i] = NULL;
+        rbusMessage_GetString(request, (const char**)&parameterVal[i].parameterName);
+        rbusMessage_GetInt32(request, &dataType);
+        if(dataType < RBUS_BOOLEAN)
+        {
+            parameterVal[i].type = dataType;
+            rbusMessage_GetString(request, (const char**)&tmpParamVal);
+            if(tmpParamVal)
+            {
+                parameterVal[i].parameterValue = bus_info->mallocfunc((strlen(tmpParamVal)+1));
+                if(parameterVal[i].parameterValue)
+                {
+                    memset(parameterVal[i].parameterValue, 0, (strlen(tmpParamVal)+1));
+                    strncpy(parameterVal[i].parameterValue, tmpParamVal, strlen(tmpParamVal));
+                }
+            }
+        }
+        else
+        {
+            ccsp_handle_rbus_component_reply(bus_info, request, (rbusValueType_t)dataType, &parameterVal[i].type, &parameterVal[i].parameterValue);
+        }
+        cachedParameterNames[i] = strdup(parameterVal[i].parameterName);
+    }
+    const char *str = NULL;
+    rbusMessage_GetString(request, &str);
+    commit = (str && strcasecmp(str, "TRUE") == 0) ? 1 : 0;
+    if((rollBack == 1) && func->getParameterValues)
+    {
+        ret_code = func->getParameterValues(writeID, cachedParameterNames, param_size, &size, &cachedVal, func->getParameterValues_data);
+        if(ret_code != CCSP_SUCCESS)
+        {
+            CcspTraceWarning(("Retrieving values to current data failed with result %d\n", ret_code));
+        }
+    }
+    result = func->setParameterValues(sessionId, writeID, parameterVal, param_size, commit, &invalidParameterName, func->setParameterValues_data);
+    if(result != CCSP_SUCCESS)
+        CcspTraceWarning(("setParameterValues failed with result %d\n", result));
+    // Based on study done on RDKB-58643, Rolling back values only if error is CCSP_ERR_INVALID_PARAMETER_VALUE.
+    if(result == CCSP_ERR_INVALID_PARAMETER_VALUE && rollBack == 1)
+    {
+        for(i = 0; i < size; i++)
+        {
+            err = func->setParameterValues(sessionId, writeID, cachedVal[i], 1, commit, &cachedFailedElement, func->setParameterValues_data);
+            if(err != CCSP_SUCCESS && cachedFailedElement != NULL)
+            {
+                CcspTraceWarning(("Reverting paramValues of %s to initial values failed\n", cachedFailedElement));
+            }
+        }
+        if(cachedFailedElement != NULL)
+            bus_info->freefunc(cachedFailedElement);
+    }
+    rbusMessage_Init(response);
+    tmp = result;
+    rbusMessage_SetInt32(*response, tmp);
+    if(result == CCSP_SUCCESS && ret_code == CCSP_SUCCESS)
+    {
+        for(i = 0; i < size; i++)
+        {
+            if(cachedVal[i]->parameterValue != NULL)
+            {
+                rbusValueType_t type = rbus_GetDataType(cachedVal[i]->type);
+                rbusValue_Init(&value);
+                rbusValue_SetFromString(value, type, cachedVal[i]->parameterValue);
+                rbusProperty_Init(&cachedProperties, cachedVal[i]->parameterName, value);
+                rbusValue_Release(value);
+                if(properties == NULL)
+                    properties = cachedProperties;
+                else
+                {
+                    rbusProperty_Append(properties, cachedProperties);
+                    rbusProperty_Release(cachedProperties);
+                }
+            }
+        }
+        rbusPropertyList_appendToMessage(properties, *response);
+        rbusProperty_Release(properties);
+    }
+    if(invalidParameterName != NULL)
+        rbusMessage_SetString(*response, invalidParameterName);
+    else
+        rbusMessage_SetString(*response, "");
+    for(i = 0; i < param_size; i++)
+    {
+        if(parameterVal[i].parameterValue)
+        {
+            bus_info->freefunc(parameterVal[i].parameterValue);
+        }
+    }
+    if(cachedParameterNames != NULL)
+    {
+        for(i = 0; i < param_size; i++)
+        {
+            if(cachedParameterNames[i] != NULL)
+            {
+                free(cachedParameterNames[i]);
+            }
+        }
+        bus_info->freefunc(cachedParameterNames);
+    }
+    free_parameterValStruct_t(bus_info, size, cachedVal);
+    bus_info->freefunc(parameterVal);
+    bus_info->freefunc(invalidParameterName);
+    return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static int
+ccsp_rbus_getParameterNames_handler
+(
+    CCSP_MESSAGE_BUS_INFO *bus_info,
+    CCSP_Base_Func_CB *func,
+    rbusMessage request,
+    rbusMessage *response
+)
+{
+    int i = 0, size = 0;
+    int32_t requestedDepth, rowNamesOnly = 0, result = 0, tmp = 0;
+    char * parameterName = 0;
+    parameterInfoStruct_t **val = 0;
+    rbusMessage_GetString(request, (const char**)&parameterName);
+    rbusMessage_GetInt32(request, &requestedDepth);
+    rbusMessage_GetInt32(request, &rowNamesOnly);
+    rbusMessage_Init(response);
+    result = func->getParameterNames(parameterName, requestedDepth == -1, &size, &val, func->getParameterNames_data);
+    tmp = result;
+    rbusMessage_SetInt32(*response, tmp);
+    if(tmp == CCSP_SUCCESS)
+    {
+        int actualCount = 0;
+        char buf[CCSP_BASE_PARAM_LENGTH];
+        int inst_num;
+        int type;
+
+        if(rowNamesOnly)
+        {
+            for(i = 0; i < size; i++)
+            {
+                type = CcspBaseIf_getObjType(parameterName, val[i]->parameterName, &inst_num, buf);
+                if(type == CCSP_BASE_INSTANCE)
+                    actualCount++;
+            }
+        }
+        else
+        {
+            actualCount = size;
+        }
+
+        rbusMessage_SetInt32(*response, actualCount);
+
+        for(i = 0; i < size; i++)
+        {
+            type = CcspBaseIf_getObjType(parameterName, val[i]->parameterName, &inst_num, buf);
+
+            CcspTraceDebug(("Param [%d] Name=%s, Writable=%d, Type=%d\n", i, val[i]->parameterName, val[i]->writable, type));
+
+            if(rowNamesOnly)
+            {
+                if(type != CCSP_BASE_INSTANCE)
+                    continue;
+                rbusMessage_SetInt32(*response, (int32_t)inst_num);
+                rbusMessage_SetString(*response, "");
+            }
+            else
+            {
+                rbusElementType_t elemType = 0;
+                rbusAccess_t accessFlags = 0;
+
+                /* determine element type */
+                if(type == CCSP_BASE_PARAM)
+                {
+                    elemType = RBUS_ELEMENT_TYPE_PROPERTY;
+                }
+                else if(type == CCSP_BASE_INSTANCE)
+                {
+                    elemType = 0; /*object*/
+                }
+                else if(type == CCSP_BASE_OBJECT)
+                {
+                    if(val[i]->writable)
+                        elemType = RBUS_ELEMENT_TYPE_TABLE;
+                    else
+                        elemType = 0; /*object*/
+                }
+
+                /* determine access flags */
+                accessFlags = RBUS_ACCESS_GET;
+
+                if(elemType == RBUS_ELEMENT_TYPE_PROPERTY)
+                {
+                    accessFlags |= RBUS_ACCESS_SUBSCRIBE;
+                    if(val[i]->writable)
+                        accessFlags |= RBUS_ACCESS_SET;
+                }
+                else if(elemType == RBUS_ELEMENT_TYPE_TABLE)
+                {
+                    if(val[i]->writable)
+                        accessFlags |= RBUS_ACCESS_ADDROW | RBUS_ACCESS_REMOVEROW;
+                }
+                else /*objects or rows*/
+                {
+                    if(val[i]->writable)
+                        accessFlags |= RBUS_ACCESS_SET;
+                }
+
+                rbusMessage_SetString(*response, val[i]->parameterName);
+                rbusMessage_SetInt32(*response, (int32_t)elemType);
+                rbusMessage_SetInt32(*response, (int32_t)accessFlags);
+            }
+        }
+    }
+    free_parameterInfoStruct_t(bus_info, size, val);
     return 0;
 }
 

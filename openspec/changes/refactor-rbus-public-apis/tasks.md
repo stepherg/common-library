@@ -6,10 +6,10 @@
 - [ ] 1.5 Verify simple handlers compile and pass existing tests
 
 ## 2. Extract Complex Method Handlers
-- [ ] 2.1 Create `ccsp_rbus_getParameterNames_handler()` — extract METHOD_GETPARAMETERNAMES logic (includes access flag computation and rowNamesOnly filtering)
-- [ ] 2.2 Create `ccsp_rbus_getParameterValues_handler()` — extract METHOD_GETPARAMETERVALUES logic (includes wildcard expansion)
-- [ ] 2.3 Create `ccsp_rbus_setParameterValues_handler()` — extract METHOD_SETPARAMETERVALUES logic (includes rollback, commit flag, property list caching); remove `rbusPropertyList_appendToMessage` usage
-- [ ] 2.4 Verify complex handlers preserve identical CCSP callback invocation behavior
+- [x] 2.1 Create `ccsp_rbus_getParameterNames_handler()` — extract METHOD_GETPARAMETERNAMES logic (includes access flag computation and rowNamesOnly filtering)
+- [x] 2.2 Create `ccsp_rbus_getParameterValues_handler()` — extract METHOD_GETPARAMETERVALUES logic (includes wildcard expansion)
+- [x] 2.3 Create `ccsp_rbus_setParameterValues_handler()` — extract METHOD_SETPARAMETERVALUES logic (includes rollback, commit flag, property list caching); remove `rbusPropertyList_appendToMessage` usage
+- [x] 2.4 Verify complex handlers preserve identical CCSP callback invocation behavior
 
 ## 3. Extract RPC Sub-Method Handlers
 - [ ] 3.1 Create `ccsp_rbus_getAttributes_handler()` — extract METHOD_RPC GetAttributes logic; remove `rbusObject_initFromMessage`/`rbusObject_appendToMessage` usage
