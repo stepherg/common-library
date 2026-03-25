@@ -21,11 +21,14 @@
 
 #include "ccsp_base_api.h"
 #include "ccsp_message_bus.h"
+#include "ccsp_psm_helper.h"
 #include "ccsp_usp_provider_adapter.h"
 #include "ccsp_usp_consumer_adapter.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 /* Re-declare the shim handle from ccsp_message_bus_usp.c */
 typedef struct _CCSP_USP_BUS_HANDLE {
@@ -645,4 +648,417 @@ void free_CCSP_BASE_RECORD(void* bus_handle, PCCSP_BASE_RECORD pInstanceArray)
 {
     (void)bus_handle;
     (void)pInstanceArray;
+}
+
+/*--- PSM helper functions ---*/
+/*
+ * These delegate to the already-shimmed CcspBaseIf_* APIs, targeting the PSM component.
+ * The USP broker routes requests by parameter path, so dst_component_id and dbus_path
+ * are carried for compatibility but ignored by the USP adapter layer.
+ */
+
+static void psm_build_name(char* buf, size_t bufsz, const char* prefix)
+{
+    if (prefix && prefix[0] != '\0')
+        snprintf(buf, bufsz, "%s%s", prefix, CCSP_DBUS_PSM);
+    else
+        snprintf(buf, bufsz, "%s", CCSP_DBUS_PSM);
+}
+
+#ifdef PSM_SLAP_VAR
+int PSM_Set_Record_Value(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pRecordName,
+    unsigned int const ulRecordType,
+    PSLAP_VARIABLE pValue)
+{
+    (void)ulRecordType;
+    if (!bus_handle || !pRecordName || !pValue)
+        return CCSP_FAILURE;
+
+    CCSP_MESSAGE_BUS_INFO* bus_info = (CCSP_MESSAGE_BUS_INFO*)bus_handle;
+    parameterValStruct_t val[1];
+    char buf[128];
+    char* var_string = NULL;
+
+    val[0].parameterName = (char*)pRecordName;
+    val[0].parameterValue = buf;
+
+    switch (pValue->Syntax) {
+    case SLAP_VAR_SYNTAX_int:
+        snprintf(buf, sizeof(buf), "%d", pValue->Variant.varInt);
+        val[0].type = ccsp_int;
+        break;
+    case SLAP_VAR_SYNTAX_uint32:
+        snprintf(buf, sizeof(buf), "%u", (unsigned int)pValue->Variant.varUint32);
+        val[0].type = ccsp_unsignedInt;
+        break;
+    case SLAP_VAR_SYNTAX_bool:
+        snprintf(buf, sizeof(buf), "%s", pValue->Variant.varBool ? PSM_TRUE : PSM_FALSE);
+        val[0].type = ccsp_boolean;
+        break;
+    case SLAP_VAR_SYNTAX_string:
+        val[0].parameterValue = pValue->Variant.varString;
+        val[0].type = ccsp_string;
+        break;
+    case SLAP_VAR_SYNTAX_TYPE_ucharArray:
+    {
+        SLAP_UCHAR_ARRAY* arr = pValue->Variant.varUcharArray;
+        var_string = bus_info->mallocfunc(arr->VarCount * 2 + 1);
+        if (!var_string) return CCSP_Message_Bus_OOM;
+        unsigned int i;
+        for (i = 0; i < arr->VarCount; i++)
+            snprintf(&var_string[i * 2], 3, "%02X", arr->Array.arrayUchar[i]);
+        val[0].parameterValue = var_string;
+        val[0].type = ccsp_byte;
+        break;
+    }
+    default:
+        return CCSP_CR_ERR_INVALID_PARAM;
+    }
+
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), pSubSystemPrefix);
+
+    int ret = CcspBaseIf_setParameterValues(
+        bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+        0, 0, val, 1, 1, NULL);
+
+    if (var_string)
+        bus_info->freefunc(var_string);
+    return ret;
+}
+
+int PSM_Get_Record_Value(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pRecordName,
+    unsigned int* ulRecordType,
+    PSLAP_VARIABLE pValue)
+{
+    if (!bus_handle || !pRecordName || !pValue)
+        return CCSP_FAILURE;
+
+    CCSP_MESSAGE_BUS_INFO* bus_info = (CCSP_MESSAGE_BUS_INFO*)bus_handle;
+    char* parameterNames[1];
+    int size = 0;
+    parameterValStruct_t** val = NULL;
+    parameterNames[0] = (char*)pRecordName;
+
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), pSubSystemPrefix);
+
+    int ret = CcspBaseIf_getParameterValues(
+        bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+        parameterNames, 1, &size, &val);
+
+    if (ret != CCSP_SUCCESS)
+        return ret;
+    if (size < 1) {
+        free_parameterValStruct_t(bus_handle, size, val);
+        return CCSP_CR_ERR_INVALID_PARAM;
+    }
+
+    if (ulRecordType)
+        *ulRecordType = val[0]->type;
+
+    switch (val[0]->type) {
+    case ccsp_int:
+        pValue->Syntax = SLAP_VAR_SYNTAX_int;
+        pValue->Variant.varInt = atoi(val[0]->parameterValue);
+        break;
+    case ccsp_unsignedInt:
+        pValue->Syntax = SLAP_VAR_SYNTAX_uint32;
+        pValue->Variant.varUint32 = (unsigned int)atoll(val[0]->parameterValue);
+        break;
+    case ccsp_boolean:
+        pValue->Syntax = SLAP_VAR_SYNTAX_bool;
+        if (!strcmp(val[0]->parameterValue, PSM_FALSE) ||
+            strcasecmp(val[0]->parameterValue, "false") == 0)
+            pValue->Variant.varBool = SLAP_FALSE;
+        else
+            pValue->Variant.varBool = TRUE;
+        break;
+    case ccsp_string:
+        pValue->Syntax = SLAP_VAR_SYNTAX_string;
+        if (pValue->Variant.varString)
+            bus_info->freefunc(pValue->Variant.varString);
+        pValue->Variant.varString = bus_info->mallocfunc(strlen(val[0]->parameterValue) + 1);
+        if (pValue->Variant.varString)
+            strcpy(pValue->Variant.varString, val[0]->parameterValue);
+        break;
+    case ccsp_byte:
+    {
+        int ulUcharCount = (int)strlen(val[0]->parameterValue) / 2;
+        SLAP_UCHAR_ARRAY* varArr = (SLAP_UCHAR_ARRAY*)bus_info->mallocfunc(
+            sizeof(SLAP_UCHAR_ARRAY) + ulUcharCount);
+        if (varArr) {
+            varArr->Size = sizeof(SLAP_UCHAR_ARRAY) + ulUcharCount;
+            varArr->VarCount = ulUcharCount;
+            varArr->Syntax = SLAP_VAR_SYNTAX_ucharArray;
+            char* p = val[0]->parameterValue;
+            int i;
+            for (i = 0; i < ulUcharCount; i++) {
+                unsigned int tmp = 0;
+                char hex[3] = { p[i*2], p[i*2+1], 0 };
+                sscanf(hex, "%02X", &tmp);
+                varArr->Array.arrayUchar[i] = (unsigned char)tmp;
+            }
+            if (pValue->Variant.varUcharArray)
+                bus_info->freefunc(pValue->Variant.varUcharArray);
+            pValue->Variant.varUcharArray = varArr;
+        }
+        pValue->Syntax = SLAP_VAR_SYNTAX_TYPE_ucharArray;
+        break;
+    }
+    default:
+        ret = CCSP_CR_ERR_INVALID_PARAM;
+    }
+
+    free_parameterValStruct_t(bus_handle, size, val);
+    return ret;
+}
+#endif /* PSM_SLAP_VAR */
+
+int PSM_Set_Record_Value2(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pRecordName,
+    unsigned int const ulRecordType,
+    char const* const pVal)
+{
+    if (!bus_handle || !pRecordName || !pVal)
+        return CCSP_FAILURE;
+
+    if (ulRecordType == ccsp_boolean) {
+        if (strcmp(pVal, PSM_FALSE) && strcmp(pVal, PSM_TRUE))
+            return CCSP_CR_ERR_INVALID_PARAM;
+    }
+
+    parameterValStruct_t val[1];
+    val[0].parameterName = (char*)pRecordName;
+    val[0].type = ulRecordType;
+    val[0].parameterValue = (char*)pVal;
+
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), pSubSystemPrefix);
+
+    return CcspBaseIf_setParameterValues(
+        bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+        0, 0, val, 1, 1, NULL);
+}
+
+int PSM_Get_Record_Value2(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pRecordName,
+    unsigned int* ulRecordType,
+    char** pValue)
+{
+    if (!bus_handle || !pRecordName || !pValue)
+        return CCSP_FAILURE;
+
+    *pValue = NULL;
+    CCSP_MESSAGE_BUS_INFO* bus_info = (CCSP_MESSAGE_BUS_INFO*)bus_handle;
+    char* parameterNames[1];
+    parameterValStruct_t** val = NULL;
+    int size = 0;
+    parameterNames[0] = (char*)pRecordName;
+
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), pSubSystemPrefix);
+
+    int ret = CcspBaseIf_getParameterValues(
+        bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+        parameterNames, 1, &size, &val);
+
+    if (ret == CCSP_SUCCESS && size > 0 && val && val[0]) {
+        if (ulRecordType)
+            *ulRecordType = val[0]->type;
+        if (val[0]->type == ccsp_boolean) {
+            *pValue = bus_info->mallocfunc(6); /* "FALSE\0" */
+            if (*pValue)
+                snprintf(*pValue, 6, "%s",
+                    (strcasecmp(val[0]->parameterValue, "true") == 0) ? "TRUE" : "FALSE");
+        } else {
+            *pValue = bus_info->mallocfunc(strlen(val[0]->parameterValue) + 1);
+            if (*pValue)
+                strcpy(*pValue, val[0]->parameterValue);
+        }
+    }
+    free_parameterValStruct_t(bus_handle, size, val);
+    return ret;
+}
+
+int PSM_Del_Record(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pRecordName)
+{
+    if (!bus_handle || !pRecordName)
+        return CCSP_FAILURE;
+
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), pSubSystemPrefix);
+
+    /*
+     * Legacy implementation "deletes" a PSM record by setting its
+     * accessControlBitmask to 0.  In USP mode the CcspBaseIf_setParameterAttributes
+     * shim is a no-op, so we delegate to the same semantic — the PSM agent on the
+     * broker side interprets this as a delete.
+     *
+     * For subtree deletes (name ends with '.'), we enumerate children first.
+     */
+    size_t len = strlen(pRecordName);
+
+    if (len > 0 && pRecordName[len - 1] == '.') {
+        /* Subtree delete: enumerate then delete each child */
+        parameterInfoStruct_t** parameter = NULL;
+        int size = 0;
+        int ret = CcspBaseIf_getParameterNames(
+            bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+            (char*)pRecordName, 0, &size, &parameter);
+        if (ret != CCSP_SUCCESS)
+            return ret;
+        int i;
+        for (i = 0; i < size; i++) {
+            parameterAttributeStruct_t attr;
+            attr.parameterName = parameter[i]->parameterName;
+            attr.notificationChanged = 0;
+            attr.notification = 0;
+            attr.access = 0;
+            attr.accessControlChanged = 1;
+            attr.accessControlBitmask = 0;
+            ret = CcspBaseIf_setParameterAttributes(
+                bus_handle, psmName, CCSP_DBUS_PATH_PSM, 0, &attr, 1);
+            if (ret != CCSP_SUCCESS)
+                break;
+        }
+        free_parameterInfoStruct_t(bus_handle, size, parameter);
+        return ret;
+    } else {
+        parameterAttributeStruct_t attr;
+        attr.parameterName = (char*)pRecordName;
+        attr.notificationChanged = 0;
+        attr.notification = 0;
+        attr.access = 0;
+        attr.accessControlChanged = 1;
+        attr.accessControlBitmask = 0;
+        return CcspBaseIf_setParameterAttributes(
+            bus_handle, psmName, CCSP_DBUS_PATH_PSM, 0, &attr, 1);
+    }
+}
+
+int PsmGetNextLevelInstances(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pParentPath,
+    unsigned int* pulNumInstance,
+    unsigned int** ppInstanceArray)
+{
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), pSubSystemPrefix);
+
+    return CcspBaseIf_GetNextLevelInstances(
+        bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+        (char*)pParentPath, pulNumInstance, ppInstanceArray);
+}
+
+int PsmEnumRecords(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pParentPath,
+    dbus_bool nextLevel,
+    unsigned int* pulNumRec,
+    PCCSP_BASE_RECORD* ppRecArray)
+{
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), pSubSystemPrefix);
+
+    return CcspBaseIf_EnumRecords(
+        bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+        (char*)pParentPath, nextLevel, pulNumRec, ppRecArray);
+}
+
+int PsmGroupGet(
+    void* bus_handle,
+    const char* subsys,
+    const char* names[],
+    int nname,
+    parameterValStruct_t*** records,
+    int* nrec)
+{
+    if (!bus_handle || !names || !records || !nrec)
+        return CCSP_FAILURE;
+
+    char psmName[256];
+    psm_build_name(psmName, sizeof(psmName), subsys);
+
+    return CcspBaseIf_getParameterValues(
+        bus_handle, psmName, CCSP_DBUS_PATH_PSM,
+        (char**)names, nname, nrec, records);
+}
+
+void PsmFreeRecords(
+    void* bus_handle,
+    parameterValStruct_t** records,
+    int nrec)
+{
+    free_parameterValStruct_t(bus_handle, nrec, records);
+}
+
+int PSM_Reset_UserChangeFlag(
+    void* bus_handle,
+    char const* const pSubSystemPrefix,
+    char const* const pathName)
+{
+    char record_name[256];
+    snprintf(record_name, sizeof(record_name), "UserChanged.%s", pathName);
+    return PSM_Del_Record(bus_handle, pSubSystemPrefix, record_name);
+}
+
+int Rbus_to_CCSP_error_mapper(int error_code)
+{
+    /* In USP mode, pass through — error codes are already mapped at the adapter layer */
+    (void)error_code;
+    return CCSP_FAILURE;
+}
+
+int Rbus2_to_CCSP_error_mapper(int error_code)
+{
+    (void)error_code;
+    return CCSP_FAILURE;
+}
+
+int getPartnerId(char* partnerID)
+{
+    if (!partnerID)
+        return -1;
+    partnerID[0] = '\0';
+    return 0;
+}
+
+int CcspBaseIf_getParameterValues_Shm(
+    CCSP_MESSAGE_BUS_INFO* bus_info,
+    int shmSize,
+    int* val_size,
+    parameterValStruct_t*** parameterval)
+{
+    /* SHM not supported in USP mode */
+    (void)bus_info; (void)shmSize;
+    if (val_size) *val_size = 0;
+    if (parameterval) *parameterval = NULL;
+    return CCSP_MESSAGE_BUS_NOT_SUPPORT;
+}
+
+int CcspBaseIf_base_path_message_write_shm(
+    void* bus_handle,
+    int size,
+    parameterValStruct_t** val,
+    int* shmSize)
+{
+    (void)bus_handle; (void)size; (void)val;
+    if (shmSize) *shmSize = 0;
+    return CCSP_MESSAGE_BUS_NOT_SUPPORT;
 }
