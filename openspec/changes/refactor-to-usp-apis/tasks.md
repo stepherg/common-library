@@ -58,15 +58,15 @@
 - [x] 7.3 Implement custom Event subscription wrapper for system signals: map `CcspBaseIf_SendsystemReadySignal` → `emit_event("Device.", "SystemReady", {})`
 - [x] 7.4 Implement OperationComplete subscription wrapper and emit calls for async command completion (success and failure paths)
 - [x] 7.5 Implement reconnection re-subscribe: store `SubscribeOptions` per active subscription, re-issue all on `on_connected` callback
-- [ ] 7.6 Git checkpoint: `git add -A && git commit -m "feat: implement object, event, and operation complete notifications" && git push`
+- [x] 7.6 Git checkpoint: `git add -A && git commit -m "feat: implement object, event, and operation complete notifications" && git push`
 
 ## 8. Deprecation & Legacy Removal
 
-- [ ] 8.1 Mark `Ccsp_RbusValueChange_Subscribe` and `Ccsp_RbusInterval_Subscribe` as deprecated, returning error codes
-- [ ] 8.2 Remove `ccsp_rbus_serializer.c` / `ccsp_rbus_serializer.h` — USP handles serialization internally
-- [ ] 8.3 Remove DBus-specific code paths and `#ifdef rbus_enabled` conditionals from `ccsp_message_bus.c`
-- [ ] 8.4 Remove `ccsp_rbus_value_change.c/.h` and `ccsp_rbus_intervalsubscription.c/.h` polling subsystems
-- [ ] 8.5 Create compatibility header mapping old API names to new adapter functions via `#define` macros for downstream components that include legacy headers
+- [x] 8.1 Mark `Ccsp_RbusValueChange_Subscribe` and `Ccsp_RbusInterval_Subscribe` as deprecated, returning error codes
+- [x] 8.2 Remove `ccsp_rbus_serializer.c` / `ccsp_rbus_serializer.h` — USP handles serialization internally
+- [x] 8.3 Remove DBus-specific code paths and `#ifdef rbus_enabled` conditionals from `ccsp_message_bus.c`
+- [x] 8.4 Remove `ccsp_rbus_value_change.c/.h` and `ccsp_rbus_intervalsubscription.c/.h` polling subsystems
+- [x] 8.5 Create compatibility header mapping old API names to new adapter functions via `#define` macros for downstream components that include legacy headers
 - [ ] 8.6 Git checkpoint: `git add -A && git commit -m "refactor: remove legacy rbus/DBus code and polling subsystems" && git push`
 
 ## 9. Integration Testing
