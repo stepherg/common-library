@@ -66,7 +66,9 @@ AC_FUNC_MALLOC
 
 # Check for USP library
 AC_CHECK_LIB([usp], [main], [], [AC_MSG_ERROR([USP library not found. Install libusp.])])
+AC_LANG_PUSH([C++])
 AC_CHECK_HEADERS([usp/agent.h usp/controller.h usp/schema.h], [], [AC_MSG_ERROR([USP headers not found.])])
+AC_LANG_POP([C++])
 
 AC_CONFIG_FILES(
 	source/cosa/utilities/AnscObjectArray/AnscByteArray/Makefile
