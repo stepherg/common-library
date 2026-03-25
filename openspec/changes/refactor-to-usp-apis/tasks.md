@@ -13,16 +13,16 @@
 - [x] 2.2 Implement `CCSP_Message_Bus_Exit` wrapper that calls `RunHandle::stop()` and destroys the `AgentSession`
 - [x] 2.3 Implement namespace-to-schema converter: parse `name_spaceType_t` arrays into `usp::Schema` with `ObjectDef` entries, setting `is_multi_instance`, `ParamDef` access/type, and `unique_keys`
 - [x] 2.4 Implement `CcspBaseIf_registerCapabilities` wrapper that calls the namespace-to-schema converter and then `AgentSession::provide(path, schema, handlers)`
-- [ ] 2.5 Git checkpoint: `git add -A && git commit -m "feat: implement provider adapter session and schema registration" && git push`
+- [x] 2.5 Git checkpoint: `git add -A && git commit -m "feat: implement provider adapter session and schema registration" && git push`
 
 ## 3. Provider Adapter — ObjectHandlers
 
-- [ ] 3.1 Implement `ObjectHandlers::get` adapter: translate `ObjectContext` to full parameter path, invoke `CCSPBASEIF_GETPARAMETERVALUES` callback, convert `parameterValStruct_t` array to `ParamMap`
-- [ ] 3.2 Implement `ObjectHandlers::set` adapter: construct `parameterValStruct_t` from path + value, invoke `CCSPBASEIF_SETPARAMETERVALUES` callback, return `Status` from callback result
-- [ ] 3.3 Implement `ObjectHandlers::instances` adapter: invoke `CCSPBASEIF_GETPARAMETERNAMES` for the object path, collect `nextLevel` entries, extract instance numbers, return `vector<uint32_t>`
-- [ ] 3.4 Implement `ObjectHandlers::add` adapter: invoke `CCSPBASEIF_ADDTBLROW` callback with object path, return `Result<uint32_t>` with new instance number
-- [ ] 3.5 Implement `ObjectHandlers::del` adapter: reconstruct full instance path from `ObjectContext`, invoke `CCSPBASEIF_DELETETBLROW` callback, return `Status`
-- [ ] 3.6 Implement `AgentHandlers::on_operate` adapter: map `OperateRequest` to component's command callback, translate input/output args, return `OperateResponse`
+- [x] 3.1 Implement `ObjectHandlers::get` adapter: translate `ObjectContext` to full parameter path, invoke `CCSPBASEIF_GETPARAMETERVALUES` callback, convert `parameterValStruct_t` array to `ParamMap`
+- [x] 3.2 Implement `ObjectHandlers::set` adapter: construct `parameterValStruct_t` from path + value, invoke `CCSPBASEIF_SETPARAMETERVALUES` callback, return `Status` from callback result
+- [x] 3.3 Implement `ObjectHandlers::instances` adapter: invoke `CCSPBASEIF_GETPARAMETERNAMES` for the object path, collect `nextLevel` entries, extract instance numbers, return `vector<uint32_t>`
+- [x] 3.4 Implement `ObjectHandlers::add` adapter: invoke `CCSPBASEIF_ADDTBLROW` callback with object path, return `Result<uint32_t>` with new instance number
+- [x] 3.5 Implement `ObjectHandlers::del` adapter: reconstruct full instance path from `ObjectContext`, invoke `CCSPBASEIF_DELETETBLROW` callback, return `Status`
+- [x] 3.6 Implement `AgentHandlers::on_operate` adapter: map `OperateRequest` to component's command callback, translate input/output args, return `OperateResponse`
 - [ ] 3.7 Git checkpoint: `git add -A && git commit -m "feat: implement provider adapter ObjectHandlers" && git push`
 
 ## 4. Consumer Adapter — Core Operations
