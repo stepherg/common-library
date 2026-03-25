@@ -34,13 +34,13 @@
 - [x] 4.5 Implement `CcspBaseIf_deleteTableRow` wrapper: accept but ignore destination parameters, call `del_sync(obj_path)`, return CCSP result code
 - [x] 4.6 Implement operate wrapper: call `operate_sync(command, input_args)`, convert `OperateResponse` output args to CCSP-compatible format
 - [x] 4.7 Implement `CcspBaseIf_getParameterNames` wrapper: call `get_sync(path)` and extract parameter name list from response, or use `get_instances_sync` for object enumeration
-- [ ] 4.8 Git checkpoint: `git add -A && git commit -m "feat: implement consumer adapter core operations" && git push`
+- [x] 4.8 Git checkpoint: `git add -A && git commit -m "feat: implement consumer adapter core operations" && git push`
 
 ## 5. Consumer Adapter — Error Mapping & Discovery Elimination
 
-- [ ] 5.1 Implement bidirectional error code mapping functions: `usp::ErrorCode` → CCSP int and CCSP int → `usp::ErrorCode`
-- [ ] 5.2 Stub `CcspBaseIf_discComponentSupportingNamespace` to return `CCSP_SUCCESS` with a synthetic `componentStruct_t` (valid component name and path) so existing discover-then-query callers don't hit failure paths
-- [ ] 5.3 Stub `CcspBaseIf_requestSessionID` / `CcspBaseIf_informEndOfSession` as no-ops (USP multi-param set provides atomicity)
+- [x] 5.1 Implement bidirectional error code mapping functions: `usp::ErrorCode` → CCSP int and CCSP int → `usp::ErrorCode`
+- [x] 5.2 Stub `CcspBaseIf_discComponentSupportingNamespace` to return `CCSP_SUCCESS` with a synthetic `componentStruct_t` (valid component name and path) so existing discover-then-query callers don't hit failure paths
+- [x] 5.3 Stub `CcspBaseIf_requestSessionID` / `CcspBaseIf_informEndOfSession` as no-ops (USP multi-param set provides atomicity)
 - [ ] 5.4 Git checkpoint: `git add -A && git commit -m "feat: implement error mapping and eliminate component discovery" && git push`
 
 ## 6. Subscription Adapter — Value Change
