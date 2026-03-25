@@ -2055,19 +2055,7 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
         }
         else if(!strncmp(method, METHOD_COMMIT, MAX_METHOD_NAME_LENGTH) && func->setCommit)
         {
-            int32_t tmp = 0, sessionId = 0, commit = 0;
-            unsigned int writeID = DSLH_MPA_ACCESS_CONTROL_CLI;
-            const char * writeID_str = NULL;
-            int result = 0;
-            rbusMessage_GetInt32(request, &sessionId);
-            if(rbusMessage_GetString(request, &writeID_str) == RT_OK)
-                writeID = string_to_writeid(writeID_str);
-            rbusMessage_GetInt32(request, &commit);
-            result = func->setCommit(sessionId, writeID, commit, func->setCommit_data);
-            rbusMessage_Init(response);
-            tmp = result;
-            rbusMessage_SetInt32(*response, tmp); //result
-            return DBUS_HANDLER_RESULT_HANDLED;
+            return ccsp_rbus_commit_handler(bus_info, func, request, response);
         }
         else if(!strncmp(method, METHOD_GETPARAMETERNAMES, MAX_METHOD_NAME_LENGTH) && func->getParameterNames)
         {
@@ -2174,31 +2162,11 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
         }
         else if (!strncmp(method, METHOD_ADDTBLROW, MAX_METHOD_NAME_LENGTH) && func->AddTblRow)
         {
-            int instanceNumber = 0, result = 0;
-            int32_t tmp = 0, sessionId = 0;
-            char *str = 0;
-            rbusMessage_GetInt32(request, &sessionId);
-            rbusMessage_GetString(request, (const char**)&str); //object name
-            result = func->AddTblRow(sessionId, str, &instanceNumber , func->AddTblRow_data);
-            rbusMessage_Init(response);
-            tmp = result;
-            rbusMessage_SetInt32(*response, tmp); //result
-            tmp = instanceNumber;
-            rbusMessage_SetInt32(*response, tmp); //inst num
-            return DBUS_HANDLER_RESULT_HANDLED;
+            return ccsp_rbus_addTableRow_handler(bus_info, func, request, response);
         }
         else if (!strncmp(method, METHOD_DELETETBLROW, MAX_METHOD_NAME_LENGTH) && func->DeleteTblRow)
         {
-            int result = 0;
-            int32_t tmp = 0, sessionId = 0;
-            char * str = 0;
-            rbusMessage_GetInt32(request, &sessionId);
-            rbusMessage_GetString(request, (const char**)&str); //obj name
-            result = func->DeleteTblRow(sessionId, str , func->DeleteTblRow_data);
-            rbusMessage_Init(response);
-            tmp = result;
-            rbusMessage_SetInt32(*response, tmp); //result
-            return DBUS_HANDLER_RESULT_HANDLED;
+            return ccsp_rbus_deleteTableRow_handler(bus_info, func, request, response);
         }
         else if (!strncmp(method, METHOD_RPC, MAX_METHOD_NAME_LENGTH))
         {
@@ -2613,6 +2581,76 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
         }
     }
     return 0;
+}
+
+static int
+ccsp_rbus_commit_handler
+(
+    CCSP_MESSAGE_BUS_INFO *bus_info,
+    CCSP_Base_Func_CB *func,
+    rbusMessage request,
+    rbusMessage *response
+)
+{
+    int32_t tmp = 0, sessionId = 0, commit = 0;
+    unsigned int writeID = DSLH_MPA_ACCESS_CONTROL_CLI;
+    const char * writeID_str = NULL;
+    int result = 0;
+    rbusMessage_GetInt32(request, &sessionId);
+    if(rbusMessage_GetString(request, &writeID_str) == RT_OK)
+        writeID = string_to_writeid(writeID_str);
+    rbusMessage_GetInt32(request, &commit);
+    result = func->setCommit(sessionId, writeID, commit, func->setCommit_data);
+    rbusMessage_Init(response);
+    tmp = result;
+    rbusMessage_SetInt32(*response, tmp);
+    return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static int
+ccsp_rbus_addTableRow_handler
+(
+    CCSP_MESSAGE_BUS_INFO *bus_info,
+    CCSP_Base_Func_CB *func,
+    rbusMessage request,
+    rbusMessage *response
+)
+{
+    int instanceNumber = 0, result = 0;
+    int32_t tmp = 0, sessionId = 0;
+    char *str = 0;
+    UNREFERENCED_PARAMETER(bus_info);
+    rbusMessage_GetInt32(request, &sessionId);
+    rbusMessage_GetString(request, (const char**)&str);
+    result = func->AddTblRow(sessionId, str, &instanceNumber, func->AddTblRow_data);
+    rbusMessage_Init(response);
+    tmp = result;
+    rbusMessage_SetInt32(*response, tmp);
+    tmp = instanceNumber;
+    rbusMessage_SetInt32(*response, tmp);
+    return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static int
+ccsp_rbus_deleteTableRow_handler
+(
+    CCSP_MESSAGE_BUS_INFO *bus_info,
+    CCSP_Base_Func_CB *func,
+    rbusMessage request,
+    rbusMessage *response
+)
+{
+    int result = 0;
+    int32_t tmp = 0, sessionId = 0;
+    char * str = 0;
+    UNREFERENCED_PARAMETER(bus_info);
+    rbusMessage_GetInt32(request, &sessionId);
+    rbusMessage_GetString(request, (const char**)&str);
+    result = func->DeleteTblRow(sessionId, str, func->DeleteTblRow_data);
+    rbusMessage_Init(response);
+    tmp = result;
+    rbusMessage_SetInt32(*response, tmp);
+    return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static rbusError_t
