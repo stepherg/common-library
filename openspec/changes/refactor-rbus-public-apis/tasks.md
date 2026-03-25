@@ -1,5 +1,5 @@
 ## 1. Extract Simple Method Handlers (lowest risk first)
-- [ ] 1.1 Create `ccsp_rbus_getHealth_handler()` — extract METHOD_GETHEALTH logic from `thread_path_message_func_rbus`; register with non-NULL `methodHandler` in `rbus_regDataElements`
+- [x] 1.1 Create `ccsp_rbus_getHealth_handler()` — extract METHOD_GETHEALTH logic from `thread_path_message_func_rbus`; register with non-NULL `methodHandler` in `rbus_regDataElements`
 - [ ] 1.2 Create `ccsp_rbus_commit_handler()` — extract METHOD_COMMIT logic
 - [ ] 1.3 Create `ccsp_rbus_addTableRow_handler()` — extract METHOD_ADDTBLROW logic
 - [ ] 1.4 Create `ccsp_rbus_deleteTableRow_handler()` — extract METHOD_DELETETBLROW logic

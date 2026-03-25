@@ -95,6 +95,8 @@ extern void rbusEventData_appendToMessage(rbusEvent_t* event, rbusFilter_t filte
 extern void rbusObject_initFromMessage(rbusObject_t* obj, rbusMessage msg);
 extern void rbusObject_appendToMessage(rbusObject_t obj, rbusMessage msg);
 // GLOBAL VAR
+static CCSP_MESSAGE_BUS_INFO* s_bus_info = NULL;
+
 // TYPE DEF
 typedef struct
 {
@@ -133,6 +135,7 @@ static int               CCSP_Message_Save_Register_Event(void*, const char*, co
 static int               CCSP_Message_Bus_Register_Path_Priv(void*, const char*, DBusObjectPathMessageFunction, void*);
 static int               CCSP_Message_Bus_Register_Path_Priv_rbus(void*, rbus_callback_t, void*);
 static int               thread_path_message_func_rbus(const char * destination, const char * method, rbusMessage in, void * user_data, rbusMessage *out, const rtMessageHeader* hdr);
+static rbusError_t       ccsp_rbus_getHealth_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
 static int               analyze_reply(DBusMessage*, DBusMessage*, DBusMessage**);
 static void Ccsp_Rbus_ReadPayload(rbusMessage payload, int32_t* componentId, int32_t* interval, int32_t* duration, rbusFilter_t* filter);
 extern void rbusPropertyList_appendToMessage(rbusProperty_t prop, rbusMessage msg);
@@ -1026,6 +1029,7 @@ CCSP_Message_Bus_Init
     }
 
         rbusCoreError_t err = RBUSCORE_SUCCESS;
+        s_bus_info = bus_info;
         CCSP_Message_Bus_Register_Path_Priv_rbus(bus_info, thread_path_message_func_rbus, bus_info);
 
         /* Register with rbusLog to use CCSPTRACE_LOGS */
@@ -1103,7 +1107,7 @@ CCSP_Message_Bus_Init
                         rbusDataElement_t dataElements[3] = {
                             {get_attributes_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, NULL}},
                             {set_attributes_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, NULL}},
-                            {get_health_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, NULL}}                   
+                            {get_health_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, (void*)ccsp_rbus_getHealth_handler}}
                         };
                         rc = rbus_regDataElements(handle, 3, dataElements);
                         if(rc != RBUS_ERROR_SUCCESS)
@@ -2609,6 +2613,32 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
         }
     }
     return 0;
+}
+
+static rbusError_t
+ccsp_rbus_getHealth_handler
+(
+    rbusHandle_t handle,
+    char const* methodName,
+    rbusObject_t inParams,
+    rbusObject_t outParams,
+    rbusMethodAsyncHandle_t asyncHandle
+)
+{
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(methodName);
+    UNREFERENCED_PARAMETER(inParams);
+    UNREFERENCED_PARAMETER(asyncHandle);
+
+    CCSP_Base_Func_CB* func = (CCSP_Base_Func_CB*)s_bus_info->CcspBaseIf_func;
+    if (func && func->getHealth)
+    {
+        int32_t result = func->getHealth();
+        rbusObject_SetPropertyInt32(outParams, "status", result);
+        CcspTraceDebug(("exiting ccsp_rbus_getHealth_handler with result %d\n", result));
+        return RBUS_ERROR_SUCCESS;
+    }
+    return RBUS_ERROR_INVALID_OPERATION;
 }
 
 static int
