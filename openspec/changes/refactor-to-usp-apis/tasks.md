@@ -77,4 +77,4 @@
 - [x] 9.4 Write adapter unit test: subscribe to object creation/deletion, verify notifications on add/delete
 - [x] 9.5 Write adapter unit test: invoke sync operate command through consumer adapter, verify output args
 - [x] 9.6 Verify build: ensure `make` compiles the adapter library and links correctly with USP, and downstream components can link against the adapter
-- [ ] 9.7 Git checkpoint: `git add -A && git commit -m "test: add USP adapter integration tests" && git push`
+- [x] 9.7 Git checkpoint: `git add -A && git commit -m "test: add USP adapter integration tests" && git push`
