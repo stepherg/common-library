@@ -23,6 +23,7 @@
 #include <usp/error.h>
 #include <usp/schema.h>
 #include <usp/agent.h>
+#include <usp/controller.h>
 #include <usp/types.h>
 
 #include <map>
