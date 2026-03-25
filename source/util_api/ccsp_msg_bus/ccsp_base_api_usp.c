@@ -1038,27 +1038,3 @@ int getPartnerId(char* partnerID)
     partnerID[0] = '\0';
     return 0;
 }
-
-int CcspBaseIf_getParameterValues_Shm(
-    CCSP_MESSAGE_BUS_INFO* bus_info,
-    int shmSize,
-    int* val_size,
-    parameterValStruct_t*** parameterval)
-{
-    /* SHM not supported in USP mode */
-    (void)bus_info; (void)shmSize;
-    if (val_size) *val_size = 0;
-    if (parameterval) *parameterval = NULL;
-    return CCSP_MESSAGE_BUS_NOT_SUPPORT;
-}
-
-int CcspBaseIf_base_path_message_write_shm(
-    void* bus_handle,
-    int size,
-    parameterValStruct_t** val,
-    int* shmSize)
-{
-    (void)bus_handle; (void)size; (void)val;
-    if (shmSize) *shmSize = 0;
-    return CCSP_MESSAGE_BUS_NOT_SUPPORT;
-}
