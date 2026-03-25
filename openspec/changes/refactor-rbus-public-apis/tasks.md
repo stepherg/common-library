@@ -18,12 +18,14 @@
 - [x] 3.4 Verify RPC sub-method handlers match current behavior
 
 ## 4. Refactor Registration Flow
+_DEFERRED: Removing `rbus_registerObj()` requires implementing `getHandler`, `setHandler`, `tableAddRowHandler`, `tableRemoveRowHandler`, and `eventSubHandler` for property elements. The per-property `setHandler` cannot replicate the atomic multi-parameter set semantics of the current raw-callback `setParameterValues` handler (which receives all params in one call). Additionally, `rbus_setCommit()` has no dedicated handler in `rbusCallbackTable_t`. These need validation on a build platform with integration tests before the raw callback can be safely removed._
 - [ ] 4.1 Update `CCSP_Message_Bus_Init()` — remove `rbus_registerObj()` raw callback registration
-- [ ] 4.2 Update `rbus_regDataElements()` calls in `ccsp_message_bus.c` to pass non-NULL handler callbacks for all method and event elements
+- [x] 4.2 Update `rbus_regDataElements()` calls in `ccsp_message_bus.c` to pass non-NULL handler callbacks for all method and event elements
 - [ ] 4.3 Remove `CCSP_Message_Bus_Register_Path_Priv_rbus()` and `thread_path_message_func_rbus()` (now dead code)
 - [ ] 4.4 Remove `bus_info->rbus_callback` field if no longer needed
 
 ## 5. Refactor Subscription Handling
+_DEFERRED: The `eventSubHandler` approach requires `getHandler` for `publishOnSubscribe` initial value delivery. Depends on Phase 4 property handlers._
 - [ ] 5.1 Create `eventSubHandler` callback for subscription lifecycle — replace METHOD_SUBSCRIBE/METHOD_UNSUBSCRIBE dispatch with rbus framework subscription callbacks
 - [ ] 5.2 Wire `eventSubHandler` into event-typed data element registrations
 - [ ] 5.3 Update `ccsp_rbus_subscription.c` to work with the new handler-based subscription flow
