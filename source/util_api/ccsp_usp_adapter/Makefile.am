@@ -29,6 +29,7 @@ libCcspCommonLibrary_ccsp_usp_adapter_la_CPPFLAGS = \
 	-I$(top_srcdir)/source/util_api/ccsp_usp_adapter
 
 libCcspCommonLibrary_ccsp_usp_adapter_la_SOURCES = \
+	ccsp_usp_types.cpp \
 	ccsp_usp_provider_adapter.cpp \
 	ccsp_usp_consumer_adapter.cpp \
 	ccsp_usp_subscription_adapter.cpp

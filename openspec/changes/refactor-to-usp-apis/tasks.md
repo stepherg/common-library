@@ -5,14 +5,14 @@
 - [x] 1.3 Update `source/Makefile.am` to build the adapter as a shared library (`libccsp_usp_adapter`) with C++17 flags and link against `-lusp`
 - [x] 1.4 Update `configure.ac` to add USP library detection (`PKG_CHECK_MODULES` or `AC_CHECK_LIB`) and a `--with-usp` configure flag
 - [x] 1.5 Create CCSP-to-USP type mapping table in a shared `ccsp_usp_types.h` mapping `dataType_e` to `usp::ValueType` and CCSP error codes to `usp::ErrorCode`
-- [ ] 1.6 Git checkpoint: `git add -A && git commit -m "feat: scaffold USP adapter modules and build setup" && git push`
+- [x] 1.6 Git checkpoint: `git add -A && git commit -m "feat: scaffold USP adapter modules and build setup" && git push`
 
 ## 2. Provider Adapter — Session & Schema
 
-- [ ] 2.1 Implement `CCSP_Message_Bus_Init` wrapper that creates `usp::AgentSession` from `component_id` and config file, stores session in bus_handle, and starts background event loop via `AgentSession::start()`
-- [ ] 2.2 Implement `CCSP_Message_Bus_Exit` wrapper that calls `RunHandle::stop()` and destroys the `AgentSession`
-- [ ] 2.3 Implement namespace-to-schema converter: parse `name_spaceType_t` arrays into `usp::Schema` with `ObjectDef` entries, setting `is_multi_instance`, `ParamDef` access/type, and `unique_keys`
-- [ ] 2.4 Implement `CcspBaseIf_registerCapabilities` wrapper that calls the namespace-to-schema converter and then `AgentSession::provide(path, schema, handlers)`
+- [x] 2.1 Implement `CCSP_Message_Bus_Init` wrapper that creates `usp::AgentSession` from `component_id` and config file, stores session in bus_handle, and starts background event loop via `AgentSession::start()`
+- [x] 2.2 Implement `CCSP_Message_Bus_Exit` wrapper that calls `RunHandle::stop()` and destroys the `AgentSession`
+- [x] 2.3 Implement namespace-to-schema converter: parse `name_spaceType_t` arrays into `usp::Schema` with `ObjectDef` entries, setting `is_multi_instance`, `ParamDef` access/type, and `unique_keys`
+- [x] 2.4 Implement `CcspBaseIf_registerCapabilities` wrapper that calls the namespace-to-schema converter and then `AgentSession::provide(path, schema, handlers)`
 - [ ] 2.5 Git checkpoint: `git add -A && git commit -m "feat: implement provider adapter session and schema registration" && git push`
 
 ## 3. Provider Adapter — ObjectHandlers
