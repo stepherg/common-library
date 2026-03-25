@@ -1066,3 +1066,9 @@ BOOLEAN waitConditionReady(
     }
     return 0; /* false — timed out */
 }
+
+void CcspBaseIf_deadlock_detection_log_print(int sig)
+{
+    /* No-op: deadlock detection is not applicable to USP mode */
+    (void)sig;
+}
