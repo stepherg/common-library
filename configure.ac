@@ -64,6 +64,10 @@ AC_C_INLINE
 # Checks for library functions.
 AC_FUNC_MALLOC
 
+# Check for USP library
+AC_CHECK_LIB([usp], [main], [], [AC_MSG_ERROR([USP library not found. Install libusp.])])
+AC_CHECK_HEADERS([usp/agent.h usp/controller.h usp/schema.h], [], [AC_MSG_ERROR([USP headers not found.])])
+
 AC_CONFIG_FILES(
 	source/cosa/utilities/AnscObjectArray/AnscByteArray/Makefile
 	source/cosa/utilities/AnscObjectArray/AnscUIntArray/Makefile
@@ -166,6 +170,7 @@ AC_CONFIG_FILES(
 	source/util_api/tls/components/Makefile
 	source/util_api/tls/Makefile
 	source/util_api/ccsp_msg_bus/Makefile
+	source/util_api/ccsp_usp_adapter/Makefile
 	source/util_api/slap/components/SlapObjBroker/Makefile
 	source/util_api/slap/components/SlapObjRecord/Makefile
 	source/util_api/slap/components/SlapVarHelper/Makefile

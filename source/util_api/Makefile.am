@@ -16,4 +16,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = tls ccsp_msg_bus slap ccsp_dm_api web ansc stun http asn.1
+SUBDIRS = tls ccsp_msg_bus ccsp_usp_adapter slap ccsp_dm_api web ansc stun http asn.1

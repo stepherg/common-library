@@ -63,7 +63,7 @@ libccsp_common_la_CPPFLAGS = \
 	-I$(top_srcdir)/util_api/http/utilities/include \
 	-I$(top_srcdir)/util_api/asn.1/include
 
-libccsp_common_la_LDFLAGS = -shared -fPIC -lssl -lcrypto -lrbus
+libccsp_common_la_LDFLAGS = -shared -fPIC -lssl -lcrypto -lrbus -lusp -lstdc++
 libccsp_common_la_SOURCES =
 libccsp_common_la_DEPENDENCIES = \
 	cosa/utilities/AnscObjectArray/AnscByteArray/libCcspCommonLibrary_AnscByteArray.la \
@@ -136,6 +136,7 @@ libccsp_common_la_DEPENDENCIES = \
 	util_api/tls/components/TlsAlertHandler/libCcspCommonLibrary_TlsAlertHandler.la \
 	util_api/tls/components/TlsConnController/libCcspCommonLibrary_TlsConnController.la \
 	util_api/ccsp_msg_bus/libCcspCommonLibrary_ccsp_msg_bus.la \
+	util_api/ccsp_usp_adapter/libCcspCommonLibrary_ccsp_usp_adapter.la \
 	util_api/slap/components/SlapObjBroker/libCcspCommonLibrary_SlapObjBroker.la \
 	util_api/slap/components/SlapObjRecord/libCcspCommonLibrary_SlapObjRecord.la \
 	util_api/slap/components/SlapVarHelper/libCcspCommonLibrary_SlapVarHelper.la \
