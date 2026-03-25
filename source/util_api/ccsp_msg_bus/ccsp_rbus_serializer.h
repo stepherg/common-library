@@ -36,8 +36,10 @@ void ccsp_rbusValue_appendToMessage(rbusValue_t value, rbusMessage msg);
 void ccsp_rbusValue_initFromMessage(rbusValue_t* value, rbusMessage msg);
 
 void ccsp_rbusPropertyList_appendToMessage(rbusProperty_t prop, rbusMessage msg);
+void ccsp_rbusPropertyList_initFromMessage(rbusProperty_t* prop, rbusMessage msg);
 
 void ccsp_rbusObject_appendToMessage(rbusObject_t obj, rbusMessage msg);
+void ccsp_rbusObject_initFromMessage(rbusObject_t* obj, rbusMessage msg);
 
 void ccsp_rbusFilter_AppendToMessage(rbusFilter_t filter, rbusMessage msg);
 void ccsp_rbusFilter_InitFromMessage(rbusFilter_t* filter, rbusMessage msg);

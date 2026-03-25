@@ -136,9 +136,14 @@ static rbusError_t       ccsp_rbus_getHealth_handler(rbusHandle_t handle, char c
 static rbusError_t       ccsp_rbus_getAttributes_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
 static rbusError_t       ccsp_rbus_setAttributes_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
 static rbusError_t       ccsp_rbus_paramValueChangeSignal_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
+static int               ccsp_rbus_getParameterValues_handler(CCSP_MESSAGE_BUS_INFO *bus_info, CCSP_Base_Func_CB *func, rbusMessage request, rbusMessage *response);
+static int               ccsp_rbus_setParameterValues_handler(CCSP_MESSAGE_BUS_INFO *bus_info, CCSP_Base_Func_CB *func, rbusMessage request, rbusMessage *response);
+static int               ccsp_rbus_getParameterNames_handler(CCSP_MESSAGE_BUS_INFO *bus_info, CCSP_Base_Func_CB *func, rbusMessage request, rbusMessage *response);
+static int               ccsp_rbus_commit_handler(CCSP_MESSAGE_BUS_INFO *bus_info, CCSP_Base_Func_CB *func, rbusMessage request, rbusMessage *response);
+static int               ccsp_rbus_addTableRow_handler(CCSP_MESSAGE_BUS_INFO *bus_info, CCSP_Base_Func_CB *func, rbusMessage request, rbusMessage *response);
+static int               ccsp_rbus_deleteTableRow_handler(CCSP_MESSAGE_BUS_INFO *bus_info, CCSP_Base_Func_CB *func, rbusMessage request, rbusMessage *response);
 static int               analyze_reply(DBusMessage*, DBusMessage*, DBusMessage**);
 static void Ccsp_Rbus_ReadPayload(rbusMessage payload, int32_t* componentId, int32_t* interval, int32_t* duration, rbusFilter_t* filter);
-/* rbusPropertyList_appendToMessage provided by ccsp_rbus_serializer.h (included above) */
 
 // External Interface, defined in ccsp_message_bus.h
 /*
