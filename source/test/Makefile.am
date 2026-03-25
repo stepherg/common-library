@@ -17,12 +17,12 @@
 # limitations under the License.
 ##########################################################################
 AM_CFLAGS =
-AM_CXXFLAGS = -std=c++11
+AM_CXXFLAGS = -std=c++17
 
 ACLOCAL_AMFLAGS = -I m4
 
 bin_PROGRAMS = CcspCommonLibrary_gtest.bin
 
-CcspCommonLibrary_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest -I${top_srcdir}/gtest/include -I${top_srcdir}/source -I${top_srcdir}/source/include
-CcspCommonLibrary_gtest_bin_SOURCES = CcspCommonLibTest.cpp gtest_main.cpp
-CcspCommonLibrary_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lpthread
+CcspCommonLibrary_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest -I${top_srcdir}/gtest/include -I${top_srcdir}/source -I${top_srcdir}/source/include -I${top_srcdir}/source/ccsp/include -I${top_srcdir}/source/ccsp/components/include -I${top_srcdir}/source/ccsp/custom -I${top_srcdir}/source/cosa/include -I${top_srcdir}/source/cosa/include/linux -I${top_srcdir}/source/debug_api/include -I${top_srcdir}/source/util_api/ccsp_usp_adapter
+CcspCommonLibrary_gtest_bin_SOURCES = CcspCommonLibTest.cpp CcspUspAdapterTest.cpp gtest_main.cpp
+CcspCommonLibrary_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lpthread -lusp

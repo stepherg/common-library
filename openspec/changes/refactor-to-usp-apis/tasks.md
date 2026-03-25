@@ -67,14 +67,14 @@
 - [x] 8.3 Remove DBus-specific code paths and `#ifdef rbus_enabled` conditionals from `ccsp_message_bus.c`
 - [x] 8.4 Remove `ccsp_rbus_value_change.c/.h` and `ccsp_rbus_intervalsubscription.c/.h` polling subsystems
 - [x] 8.5 Create compatibility header mapping old API names to new adapter functions via `#define` macros for downstream components that include legacy headers
-- [ ] 8.6 Git checkpoint: `git add -A && git commit -m "refactor: remove legacy rbus/DBus code and polling subsystems" && git push`
+- [x] 8.6 Git checkpoint: `git add -A && git commit -m "refactor: remove legacy rbus/DBus code and polling subsystems" && git push`
 
 ## 9. Integration Testing
 
-- [ ] 9.1 Write adapter unit test: provider registers schema, consumer gets/sets parameters through adapter functions using USP transport
-- [ ] 9.2 Write adapter unit test: add and delete table rows through consumer adapter, verify instance enumeration
-- [ ] 9.3 Write adapter unit test: subscribe to value change, provider sets value, verify consumer receives notification
-- [ ] 9.4 Write adapter unit test: subscribe to object creation/deletion, verify notifications on add/delete
-- [ ] 9.5 Write adapter unit test: invoke sync operate command through consumer adapter, verify output args
-- [ ] 9.6 Verify build: ensure `make` compiles the adapter library and links correctly with USP, and downstream components can link against the adapter
+- [x] 9.1 Write adapter unit test: provider registers schema, consumer gets/sets parameters through adapter functions using USP transport
+- [x] 9.2 Write adapter unit test: add and delete table rows through consumer adapter, verify instance enumeration
+- [x] 9.3 Write adapter unit test: subscribe to value change, provider sets value, verify consumer receives notification
+- [x] 9.4 Write adapter unit test: subscribe to object creation/deletion, verify notifications on add/delete
+- [x] 9.5 Write adapter unit test: invoke sync operate command through consumer adapter, verify output args
+- [x] 9.6 Verify build: ensure `make` compiles the adapter library and links correctly with USP, and downstream components can link against the adapter
 - [ ] 9.7 Git checkpoint: `git add -A && git commit -m "test: add USP adapter integration tests" && git push`
