@@ -342,7 +342,7 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
 
         // --- add handler (multi-instance objects only) ---
         if (obj.is_multi && add_cb) {
-            handlers.add = [add_cb, add_data, captured_path](
+            handlers.add = [add_cb, add_data, captured_path, session](
                 const usp::ObjectContext& ctx,
                 const std::map<std::string, std::string>& /*params*/) -> usp::Result<uint32_t>
             {
@@ -363,13 +363,21 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
                                  &instance_number, add_data);
                 if (ret != CCSP_SUCCESS)
                     return usp::Result<uint32_t>(ccsp_to_usp_error(ret), "add failed");
+
+                // Auto-emit object creation notification
+                if (session) {
+                    std::string instance_path = concrete_path +
+                        std::to_string(instance_number) + ".";
+                    session->emit_object_creation(instance_path, {});
+                }
+
                 return usp::Result<uint32_t>(static_cast<uint32_t>(instance_number));
             };
         }
 
         // --- del handler (multi-instance objects only) ---
         if (obj.is_multi && del_cb) {
-            handlers.del = [del_cb, del_data, captured_path](
+            handlers.del = [del_cb, del_data, captured_path, session](
                 const usp::ObjectContext& ctx) -> usp::Status
             {
                 // Reconstruct concrete instance path from ctx.instances
@@ -384,9 +392,17 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
                     inst_idx++;
                 }
 
+                // Capture path before deletion for notification
+                std::string del_path = concrete_path;
+
                 int ret = del_cb(0, const_cast<char*>(concrete_path.c_str()), del_data);
                 if (ret != CCSP_SUCCESS)
                     return usp::Status(ccsp_to_usp_error(ret), "del failed");
+
+                // Auto-emit object deletion notification
+                if (session)
+                    session->emit_object_deletion(del_path);
+
                 return usp::Status();
             };
         }

@@ -49,15 +49,15 @@
 - [x] 6.2 Implement notification callback wrapper that converts `usp::Notification` (param_path, param_value) to CCSP event callback format
 - [x] 6.3 Implement unsubscribe function wrapping `ControllerSession::unsubscribe()`
 - [x] 6.4 Implement provider-side auto-emit: after `ObjectHandlers::set` succeeds, call `AgentSession::emit_value_change(path, value)`
-- [ ] 6.5 Git checkpoint: `git add -A && git commit -m "feat: implement subscription adapter value change support" && git push`
+- [x] 6.5 Git checkpoint: `git add -A && git commit -m "feat: implement subscription adapter value change support" && git push`
 
 ## 7. Subscription Adapter — Object & Event Notifications
 
-- [ ] 7.1 Implement ObjectCreation subscription wrapper and `emit_object_creation` call in `ObjectHandlers::add` adapter
-- [ ] 7.2 Implement ObjectDeletion subscription wrapper and `emit_object_deletion` call in `ObjectHandlers::del` adapter
-- [ ] 7.3 Implement custom Event subscription wrapper for system signals: map `CcspBaseIf_SendsystemReadySignal` → `emit_event("Device.", "SystemReady", {})`
-- [ ] 7.4 Implement OperationComplete subscription wrapper and emit calls for async command completion (success and failure paths)
-- [ ] 7.5 Implement reconnection re-subscribe: store `SubscribeOptions` per active subscription, re-issue all on `on_connected` callback
+- [x] 7.1 Implement ObjectCreation subscription wrapper and `emit_object_creation` call in `ObjectHandlers::add` adapter
+- [x] 7.2 Implement ObjectDeletion subscription wrapper and `emit_object_deletion` call in `ObjectHandlers::del` adapter
+- [x] 7.3 Implement custom Event subscription wrapper for system signals: map `CcspBaseIf_SendsystemReadySignal` → `emit_event("Device.", "SystemReady", {})`
+- [x] 7.4 Implement OperationComplete subscription wrapper and emit calls for async command completion (success and failure paths)
+- [x] 7.5 Implement reconnection re-subscribe: store `SubscribeOptions` per active subscription, re-issue all on `on_connected` callback
 - [ ] 7.6 Git checkpoint: `git add -A && git commit -m "feat: implement object, event, and operation complete notifications" && git push`
 
 ## 8. Deprecation & Legacy Removal
