@@ -633,8 +633,8 @@ void free_registeredComponent_t(void* bus_handle, int size, registeredComponent_
     if (!val) return;
     for (i = 0; i < size; i++) {
         if (val[i]) {
-            if (val[i]->cci_name) ffunc(val[i]->cci_name);
-            if (val[i]->cci_dbusPath) ffunc(val[i]->cci_dbusPath);
+            if (val[i]->componentName) ffunc(val[i]->componentName);
+            if (val[i]->dbusPath) ffunc(val[i]->dbusPath);
             ffunc(val[i]);
         }
     }

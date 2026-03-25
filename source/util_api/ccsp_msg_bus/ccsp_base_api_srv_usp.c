@@ -52,7 +52,7 @@ void CcspBaseIf_SetCallback(
 
 void CcspBaseIf_SetCallback2(
     void* bus_handle,
-    const char* name,
+    char* name,
     void* func,
     void* user_data)
 {
@@ -62,11 +62,10 @@ void CcspBaseIf_SetCallback2(
 
 void CcspBaseIf_Set_Default_Event_Callback(
     void* bus_handle,
-    void* callback,
-    void* user_data)
+    void* callback)
 {
     /* No-op: USP uses push notifications via subscription adapter */
-    (void)bus_handle; (void)callback; (void)user_data;
+    (void)bus_handle; (void)callback;
 }
 
 void CcspBaseIf_deadlock_detection_log_save(void)
