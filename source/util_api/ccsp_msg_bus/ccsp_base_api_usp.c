@@ -29,11 +29,13 @@
 
 /* Re-declare the shim handle from ccsp_message_bus_usp.c */
 typedef struct _CCSP_USP_BUS_HANDLE {
-    void* provider_handle;
-    void* consumer_handle;
+    /* Common prefix — must match CCSP_MESSAGE_BUS_INFO layout */
+    char component_id[256];
     CCSP_MESSAGE_BUS_MALLOC mallocfunc;
     CCSP_MESSAGE_BUS_FREE freefunc;
-    char component_id[256];
+    /* USP-specific fields */
+    void* provider_handle;
+    void* consumer_handle;
 } CCSP_USP_BUS_HANDLE;
 
 static CCSP_MESSAGE_BUS_FREE get_freefunc(void* bus_handle)

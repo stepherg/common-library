@@ -25,11 +25,13 @@
 
 /* Re-declare the shim handle from ccsp_message_bus_usp.c */
 typedef struct _CCSP_USP_BUS_HANDLE {
-    void* provider_handle;
-    void* consumer_handle;
+    /* Common prefix — must match CCSP_MESSAGE_BUS_INFO layout */
+    char component_id[256];
     CCSP_MESSAGE_BUS_MALLOC mallocfunc;
     CCSP_MESSAGE_BUS_FREE freefunc;
-    char component_id[256];
+    /* USP-specific fields */
+    void* provider_handle;
+    void* consumer_handle;
 } CCSP_USP_BUS_HANDLE;
 
 /* Timeout variables kept for source compatibility */
@@ -60,7 +62,7 @@ void CcspBaseIf_SetCallback2(
 
 void CcspBaseIf_Set_Default_Event_Callback(
     void* bus_handle,
-    DBusObjectPathMessageFunction callback,
+    void* callback,
     void* user_data)
 {
     /* No-op: USP uses push notifications via subscription adapter */

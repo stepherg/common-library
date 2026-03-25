@@ -35,11 +35,13 @@
  * wrapped in a shim handle.
  */
 typedef struct _CCSP_USP_BUS_HANDLE {
-    void* provider_handle;  /* CcspUspProviderHandle* */
-    void* consumer_handle;  /* CcspUspConsumerHandle* */
+    /* Common prefix — must match CCSP_MESSAGE_BUS_INFO layout */
+    char component_id[256];
     CCSP_MESSAGE_BUS_MALLOC mallocfunc;
     CCSP_MESSAGE_BUS_FREE freefunc;
-    char component_id[256];
+    /* USP-specific fields */
+    void* provider_handle;  /* CcspUspProviderHandle* */
+    void* consumer_handle;  /* CcspUspConsumerHandle* */
 } CCSP_USP_BUS_HANDLE;
 
 void CCSP_Msg_SleepInMilliSeconds(int milliSecond)
@@ -137,7 +139,7 @@ int CCSP_Message_Bus_UnRegister_Event(
 
 void CCSP_Message_Bus_Set_Event_Callback(
     void* bus_handle,
-    DBusObjectPathMessageFunction callback,
+    void* callback,
     void* user_data)
 {
     /* No-op: USP uses push notifications */
@@ -147,7 +149,7 @@ void CCSP_Message_Bus_Set_Event_Callback(
 int CCSP_Message_Bus_Register_Path2(
     void* bus_handle,
     const char* path,
-    DBusObjectPathMessageFunction funcptr,
+    void* funcptr,
     void* user_data)
 {
     /* No-op: USP uses provide() + handle() for path registration */
@@ -156,7 +158,7 @@ int CCSP_Message_Bus_Register_Path2(
 }
 
 int CCSP_Message_Bus_Send_Str(
-    DBusConnection* conn,
+    void* conn,
     char* component_id,
     const char* path,
     const char* interface,
@@ -171,9 +173,9 @@ int CCSP_Message_Bus_Send_Str(
 
 int CCSP_Message_Bus_Send_Msg(
     void* bus_handle,
-    DBusMessage* message,
+    void* message,
     int timeout_seconds,
-    DBusMessage** result)
+    void** result)
 {
     /* Not supported in USP mode */
     (void)bus_handle; (void)message; (void)timeout_seconds; (void)result;
@@ -182,9 +184,9 @@ int CCSP_Message_Bus_Send_Msg(
 
 int CCSP_Message_Bus_Send_Msg_Block(
     void* bus_handle,
-    DBusMessage* message,
+    void* message,
     int timeout_seconds,
-    DBusMessage** result)
+    void** result)
 {
     /* Not supported in USP mode */
     (void)bus_handle; (void)message; (void)timeout_seconds; (void)result;
