@@ -23,17 +23,17 @@
 - [x] 3.4 Implement `ObjectHandlers::add` adapter: invoke `CCSPBASEIF_ADDTBLROW` callback with object path, return `Result<uint32_t>` with new instance number
 - [x] 3.5 Implement `ObjectHandlers::del` adapter: reconstruct full instance path from `ObjectContext`, invoke `CCSPBASEIF_DELETETBLROW` callback, return `Status`
 - [x] 3.6 Implement `AgentHandlers::on_operate` adapter: map `OperateRequest` to component's command callback, translate input/output args, return `OperateResponse`
-- [ ] 3.7 Git checkpoint: `git add -A && git commit -m "feat: implement provider adapter ObjectHandlers" && git push`
+- [x] 3.7 Git checkpoint: `git add -A && git commit -m "feat: implement provider adapter ObjectHandlers" && git push`
 
 ## 4. Consumer Adapter — Core Operations
 
-- [ ] 4.1 Implement consumer-side init: create `usp::ControllerSession`, start background event loop, store in bus handle structure
-- [ ] 4.2 Implement `CcspBaseIf_getParameterValues` wrapper: accept but ignore `dest_componentName` and `dbus_path` parameters, call `ControllerSession::get_sync(path)`, convert `GetResponse::ResolvedPath` entries to `parameterValStruct_t` array, map errors to CCSP codes
-- [ ] 4.3 Implement `CcspBaseIf_setParameterValues` wrapper: accept but ignore destination parameters, convert `parameterValStruct_t` array to `vector<ParamValue>`, call `set_sync(params)`, map errors and populate invalid param output
-- [ ] 4.4 Implement `CcspBaseIf_addTblRow` wrapper: accept but ignore destination parameters, call `add_sync(obj_path, {})`, extract instance number from `AddResponse`, return CCSP result code
-- [ ] 4.5 Implement `CcspBaseIf_deleteTableRow` wrapper: accept but ignore destination parameters, call `del_sync(obj_path)`, return CCSP result code
-- [ ] 4.6 Implement operate wrapper: call `operate_sync(command, input_args)`, convert `OperateResponse` output args to CCSP-compatible format
-- [ ] 4.7 Implement `CcspBaseIf_getParameterNames` wrapper: call `get_sync(path)` and extract parameter name list from response, or use `get_instances_sync` for object enumeration
+- [x] 4.1 Implement consumer-side init: create `usp::ControllerSession`, start background event loop, store in bus handle structure
+- [x] 4.2 Implement `CcspBaseIf_getParameterValues` wrapper: accept but ignore `dest_componentName` and `dbus_path` parameters, call `ControllerSession::get_sync(path)`, convert `GetResponse::ResolvedPath` entries to `parameterValStruct_t` array, map errors to CCSP codes
+- [x] 4.3 Implement `CcspBaseIf_setParameterValues` wrapper: accept but ignore destination parameters, convert `parameterValStruct_t` array to `vector<ParamValue>`, call `set_sync(params)`, map errors and populate invalid param output
+- [x] 4.4 Implement `CcspBaseIf_addTblRow` wrapper: accept but ignore destination parameters, call `add_sync(obj_path, {})`, extract instance number from `AddResponse`, return CCSP result code
+- [x] 4.5 Implement `CcspBaseIf_deleteTableRow` wrapper: accept but ignore destination parameters, call `del_sync(obj_path)`, return CCSP result code
+- [x] 4.6 Implement operate wrapper: call `operate_sync(command, input_args)`, convert `OperateResponse` output args to CCSP-compatible format
+- [x] 4.7 Implement `CcspBaseIf_getParameterNames` wrapper: call `get_sync(path)` and extract parameter name list from response, or use `get_instances_sync` for object enumeration
 - [ ] 4.8 Git checkpoint: `git add -A && git commit -m "feat: implement consumer adapter core operations" && git push`
 
 ## 5. Consumer Adapter — Error Mapping & Discovery Elimination
