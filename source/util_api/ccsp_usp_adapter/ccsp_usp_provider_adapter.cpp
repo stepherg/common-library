@@ -161,7 +161,8 @@ int CcspUspAdapter_RegisterCapabilities(
 
     // Build schema from namespace array
     auto schema_handlers = ccsp_usp_build_schema_and_handlers(
-        name_space, size, &handle->callbacks, handle->mallocfunc, handle->freefunc);
+        name_space, size, &handle->callbacks, handle->mallocfunc, handle->freefunc,
+        handle->session.get());
 
     for (auto& [path, schema, obj_handlers] : schema_handlers) {
         usp::AgentHandlers agent_handlers;

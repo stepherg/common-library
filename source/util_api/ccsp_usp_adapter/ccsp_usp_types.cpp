@@ -120,7 +120,8 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
     int size,
     CCSP_Base_Func_CB* callbacks,
     CCSP_MESSAGE_BUS_MALLOC mallocfunc,
-    CCSP_MESSAGE_BUS_FREE freefunc)
+    CCSP_MESSAGE_BUS_FREE freefunc,
+    usp::AgentSession* session)
 {
     std::vector<SchemaHandlerEntry> result;
 
@@ -246,7 +247,7 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
 
         // --- set handler ---
         if (set_cb) {
-            handlers.set = [set_cb, set_data, mfunc, ffunc, captured_path](
+            handlers.set = [set_cb, set_data, mfunc, ffunc, captured_path, session](
                 const usp::ObjectContext& ctx,
                 const std::string& param,
                 const std::string& value) -> usp::Status
@@ -278,6 +279,11 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
 
                 if (ret != CCSP_SUCCESS)
                     return usp::Status(ccsp_to_usp_error(ret), "set failed");
+
+                // Auto-emit value change notification
+                if (session)
+                    session->emit_value_change(full_path, value);
+
                 return usp::Status();
             };
         }

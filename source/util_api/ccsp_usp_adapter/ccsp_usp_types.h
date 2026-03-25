@@ -166,7 +166,8 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
     int size,
     CCSP_Base_Func_CB* callbacks,
     CCSP_MESSAGE_BUS_MALLOC mallocfunc,
-    CCSP_MESSAGE_BUS_FREE freefunc
+    CCSP_MESSAGE_BUS_FREE freefunc,
+    usp::AgentSession* session = nullptr
 );
 
 /**

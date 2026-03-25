@@ -41,14 +41,14 @@
 - [x] 5.1 Implement bidirectional error code mapping functions: `usp::ErrorCode` → CCSP int and CCSP int → `usp::ErrorCode`
 - [x] 5.2 Stub `CcspBaseIf_discComponentSupportingNamespace` to return `CCSP_SUCCESS` with a synthetic `componentStruct_t` (valid component name and path) so existing discover-then-query callers don't hit failure paths
 - [x] 5.3 Stub `CcspBaseIf_requestSessionID` / `CcspBaseIf_informEndOfSession` as no-ops (USP multi-param set provides atomicity)
-- [ ] 5.4 Git checkpoint: `git add -A && git commit -m "feat: implement error mapping and eliminate component discovery" && git push`
+- [x] 5.4 Git checkpoint: `git add -A && git commit -m \"feat: implement error mapping and eliminate component discovery\" && git push`
 
 ## 6. Subscription Adapter — Value Change
 
-- [ ] 6.1 Implement subscribe function wrapping `ControllerSession::subscribe()` with `NotificationType::ValueChange`, storing active subscriptions in a local registry
-- [ ] 6.2 Implement notification callback wrapper that converts `usp::Notification` (param_path, param_value) to CCSP event callback format
-- [ ] 6.3 Implement unsubscribe function wrapping `ControllerSession::unsubscribe()`
-- [ ] 6.4 Implement provider-side auto-emit: after `ObjectHandlers::set` succeeds, call `AgentSession::emit_value_change(path, value)`
+- [x] 6.1 Implement subscribe function wrapping `ControllerSession::subscribe()` with `NotificationType::ValueChange`, storing active subscriptions in a local registry
+- [x] 6.2 Implement notification callback wrapper that converts `usp::Notification` (param_path, param_value) to CCSP event callback format
+- [x] 6.3 Implement unsubscribe function wrapping `ControllerSession::unsubscribe()`
+- [x] 6.4 Implement provider-side auto-emit: after `ObjectHandlers::set` succeeds, call `AgentSession::emit_value_change(path, value)`
 - [ ] 6.5 Git checkpoint: `git add -A && git commit -m "feat: implement subscription adapter value change support" && git push`
 
 ## 7. Subscription Adapter — Object & Event Notifications
