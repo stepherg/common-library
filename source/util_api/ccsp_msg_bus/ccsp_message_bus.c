@@ -92,8 +92,6 @@ extern DEADLOCK_ARRAY*  deadlock_detection_log;
 extern void* CcspBaseIf_Deadlock_Detection_Thread(void *);
 extern void rbusFilter_InitFromMessage(rbusFilter_t* filter, rbusMessage msg);
 extern void rbusEventData_appendToMessage(rbusEvent_t* event, rbusFilter_t filter, uint32_t interval, uint32_t duration, int32_t componentId, rbusMessage msg);
-extern void rbusObject_initFromMessage(rbusObject_t* obj, rbusMessage msg);
-extern void rbusObject_appendToMessage(rbusObject_t obj, rbusMessage msg);
 // GLOBAL VAR
 static CCSP_MESSAGE_BUS_INFO* s_bus_info = NULL;
 
@@ -136,6 +134,9 @@ static int               CCSP_Message_Bus_Register_Path_Priv(void*, const char*,
 static int               CCSP_Message_Bus_Register_Path_Priv_rbus(void*, rbus_callback_t, void*);
 static int               thread_path_message_func_rbus(const char * destination, const char * method, rbusMessage in, void * user_data, rbusMessage *out, const rtMessageHeader* hdr);
 static rbusError_t       ccsp_rbus_getHealth_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
+static rbusError_t       ccsp_rbus_getAttributes_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
+static rbusError_t       ccsp_rbus_setAttributes_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
+static rbusError_t       ccsp_rbus_paramValueChangeSignal_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle);
 static int               analyze_reply(DBusMessage*, DBusMessage*, DBusMessage**);
 static void Ccsp_Rbus_ReadPayload(rbusMessage payload, int32_t* componentId, int32_t* interval, int32_t* duration, rbusFilter_t* filter);
 extern void rbusPropertyList_appendToMessage(rbusProperty_t prop, rbusMessage msg);
@@ -1078,7 +1079,7 @@ CCSP_Message_Bus_Init
                     {
                         rbusDataElement_t dataElements[2] = {
                             {CCSP_DIAG_COMPLETE_SIGNAL, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, NULL, NULL}},
-                            {"eRT.com.cisco.spvtg.ccsp.tr069pa.parameterValueChangeSignal()", RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, NULL}}
+                            {"eRT.com.cisco.spvtg.ccsp.tr069pa.parameterValueChangeSignal()", RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, (void*)ccsp_rbus_paramValueChangeSignal_handler}}
                         };
                         rc = rbus_regDataElements(handle, 2, dataElements);
                         if(rc != RBUS_ERROR_SUCCESS)
@@ -1105,8 +1106,8 @@ CCSP_Message_Bus_Init
                         snprintf(set_attributes_method_name, RBUS_MAX_NAME_LENGTH, "%s.%s", component_id, "SetAttributes()" );
                         snprintf(get_health_method_name, RBUS_MAX_NAME_LENGTH, "%s.%s", component_id, "GetHealth()" );
                         rbusDataElement_t dataElements[3] = {
-                            {get_attributes_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, NULL}},
-                            {set_attributes_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, NULL}},
+                            {get_attributes_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, (void*)ccsp_rbus_getAttributes_handler}},
+                            {set_attributes_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, (void*)ccsp_rbus_setAttributes_handler}},
                             {get_health_method_name, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, (void*)ccsp_rbus_getHealth_handler}}
                         };
                         rc = rbus_regDataElements(handle, 3, dataElements);
@@ -1866,206 +1867,9 @@ static int thread_path_message_func_rbus(const char * destination, const char * 
         {
             return ccsp_rbus_deleteTableRow_handler(bus_info, func, request, response);
         }
-        else if (!strncmp(method, METHOD_RPC, MAX_METHOD_NAME_LENGTH))
-        {
-            char const* methodName = NULL;
-            int sessionId, hasInParam;
-            rbusObject_t inParams = NULL, outParams = NULL;
-            rbusProperty_t prop = NULL;
-            rbusValue_t value = NULL;
-            rbusValue_Init(&value);
-            rbusMessage_GetInt32(request, &sessionId);
-            rbusMessage_GetString(request, &methodName);
-            rbusMessage_GetInt32(request, &hasInParam);
-            if(strstr(methodName, ".GetHealth()")  && func->getHealth)
-            {
-                int32_t result = 0;
-                result = func->getHealth();
-                rbusMessage_Init(response);
-                rbusMessage_SetInt32(*response, CCSP_SUCCESS);
-                rbusObject_Init(&outParams, NULL);
-                rbusObject_SetPropertyInt32(outParams, "status", result);
-                rbusObject_appendToMessage(outParams, *response);
-                rbusObject_Release(outParams);
-                CcspTraceDebug(("exiting METHOD_GETHEALTH with result %d\n", result));
-            }
-            else if (hasInParam && strstr(methodName, ".SetAttributes()") && func->setParameterAttributes)
-            {
-                rbusObject_initFromMessage(&inParams, request);
-                parameterAttributeStruct_t * parameterAttribute = 0;
-                int result = 0, i = 0, param_size = 0;
-                int32_t tmp = 0;
-                prop = rbusObject_GetProperties(inParams);
-                param_size = rbusProperty_GetInt32(prop);
-                if(param_size > 0)
-                {
-                    parameterAttribute = bus_info->mallocfunc(param_size*sizeof(parameterAttributeStruct_t));
-                    memset(parameterAttribute, 0, param_size*sizeof(parameterAttributeStruct_t));
-                }
-                rbusObject_t child = rbusObject_GetChildren(inParams);
-                for(i = 0; i < param_size; i++)
-                {
-                    if (child)
-                    {
-                        parameterAttribute[i].parameterName = AnscCloneString((char *)rbusObject_GetName(child));
-                        rbusProperty_t prop = rbusObject_GetProperties(child);
-                        parameterAttribute[i].notificationChanged  = rbusProperty_GetBoolean(prop);
-                        parameterAttribute[i].notification = rbusProperty_GetBoolean(prop = rbusProperty_GetNext(prop));
-                        parameterAttribute[i].access = rbusProperty_GetInt32(prop = rbusProperty_GetNext(prop));
-                        parameterAttribute[i].accessControlChanged = rbusProperty_GetBoolean(prop = rbusProperty_GetNext(prop));
-                        parameterAttribute[i].accessControlBitmask = rbusProperty_GetUInt32(prop = rbusProperty_GetNext(prop));
-                        parameterAttribute[i].RequesterID = rbusProperty_GetUInt32(rbusProperty_GetNext(prop));
-                    }
-                    child = rbusObject_GetNext(child);
-                }
-                if (inParams)
-                    rbusObject_Release(inParams);
-                result = func->setParameterAttributes(sessionId, parameterAttribute, param_size, func->setParameterAttributes_data);
-                rbusMessage_Init(response);
-                tmp = result;
-                rbusMessage_SetInt32(*response, tmp); //result
-                if (parameterAttribute)
-                {
-                    for(i = 0; i < param_size ; i++)
-                    {
-                        if(parameterAttribute[i].parameterName)
-                            AnscFreeMemory(parameterAttribute[i].parameterName);
-                    }
-                    bus_info->freefunc(parameterAttribute);
-                }
-                return DBUS_HANDLER_RESULT_HANDLED;
-            }
-            else if (hasInParam && strstr(methodName, ".GetAttributes()") && func->getParameterAttributes)
-            {
-                rbusObject_initFromMessage(&inParams, request);
-                char **parameterNames = 0;
-                parameterAttributeStruct_t **val = 0;
-                int size = 0, result = 0, i = 0, param_size = 0;
-                int32_t tmp = 0;
-                prop = rbusObject_GetProperties(inParams);
-                while(prop)
-                {
-                    param_size++;
-                    prop = rbusProperty_GetNext(prop);
-                }
-
-                if(param_size)
-                {
-                    parameterNames = bus_info->mallocfunc(param_size*sizeof(char *));
-                    memset(parameterNames, 0, param_size*sizeof(char *));
-                }
-
-                prop = rbusObject_GetProperties(inParams);
-                for(i = 0; i < param_size; i++)
-                {
-                    parameterNames[i] = NULL;
-                    parameterNames[i] = AnscCloneString((char *)rbusProperty_GetName(prop));
-                    CcspTraceDebug(("getAttributes() parameterName[%d]: %s\n", i, parameterNames[i]));
-                    prop = rbusProperty_GetNext(prop);
-                }
-
-                if (inParams)
-                    rbusObject_Release(inParams);
-
-                result = func->getParameterAttributes(parameterNames, param_size, &size, &val, func->getParameterAttributes_data);
-                if (parameterNames)
-                {
-                    for(i = 0; i < param_size ; i++)
-                    {
-                        if(parameterNames[i])
-                            AnscFreeMemory(parameterNames[i]);
-                    }
-                    bus_info->freefunc(parameterNames);
-                }
-                tmp = result;
-                rbusMessage_Init(response);
-                rbusMessage_SetInt32(*response, tmp);
-                if( tmp == CCSP_SUCCESS )
-                {
-                   rbusObject_Init(&outParams, NULL);
-                   rbusValue_t value_size;
-                   rbusValue_Init(&value_size);
-                   rbusValue_SetInt32(value_size, size);
-                   rbusObject_SetValue(outParams, "size", value_size);
-                   rbusObject_t child_obj = NULL, previous = NULL;
-                   for (i = 0; i <size; i++)
-                   {
-                       rbusObject_t Object = NULL;
-                       rbusObject_Init(&Object, val[i]->parameterName);
-                       rbusObject_SetPropertyBoolean(Object, "notificationChanged", val[i]->notificationChanged);
-                       rbusObject_SetPropertyBoolean(Object, "notification", val[i]->notification);
-                       rbusObject_SetPropertyInt32(Object, "access", val[i]->access);
-                       rbusObject_SetPropertyBoolean(Object, "accessControlChanged", val[i]->accessControlChanged);
-                       rbusObject_SetPropertyUInt32(Object, "accessControlBitmask", val[i]->accessControlBitmask);
-                       rbusObject_SetPropertyUInt32(Object, "RequesterID", val[i]->RequesterID);
-
-                       if(child_obj == NULL)
-                           child_obj = Object;
-                       if(previous != NULL)
-                       {
-                           rbusObject_SetNext(previous, Object);
-                           rbusObject_Release(Object);
-                       }
-                       previous = Object;
-                   }
-                   rbusObject_SetChildren(outParams, child_obj);
-                   rbusObject_Release(child_obj);
-                   rbusObject_appendToMessage(outParams, *response);
-                   rbusObject_Release(outParams);
-                }
-                free_parameterAttributeStruct_t(bus_info, size, val);
-                return DBUS_HANDLER_RESULT_HANDLED;
-            }
-            else if ((hasInParam && strstr(methodName, CCSP_PARAMETER_VALUE_CHANGE_SIGNAL)) && func->parameterValueChangeSignal)
-            {
-                rbusObject_initFromMessage(&inParams, request);
-                parameterSigStruct_t * val = 0;
-                int i = 0, param_size = 0;
-                prop = rbusObject_GetProperties(inParams);
-                param_size = rbusProperty_GetInt32(prop);
-                if(param_size > 0)
-                {
-                    val = bus_info->mallocfunc(param_size*sizeof(parameterSigStruct_t));
-                    memset(val, 0, param_size*sizeof(parameterSigStruct_t));
-                }
-                rbusObject_t child = rbusObject_GetChildren(inParams);
-                for(i = 0; i < param_size; i++)
-                {
-                    if (child)
-                    {
-                        val[i].parameterName    = AnscCloneString((char *)rbusObject_GetName(child));
-                        rbusProperty_t prop     = rbusObject_GetProperties(child);
-                        val[i].oldValue         = AnscCloneString((char *)rbusProperty_GetString(prop, NULL));
-                        val[i].newValue         = AnscCloneString((char *)rbusProperty_GetString(prop = rbusProperty_GetNext(prop), NULL));
-                        val[i].type             = rbusProperty_GetInt32(prop = rbusProperty_GetNext(prop));
-                        val[i].subsystem_prefix = AnscCloneString((char *)rbusProperty_GetString(prop = rbusProperty_GetNext(prop), NULL));
-                        val[i].writeID          = rbusProperty_GetInt32(prop = rbusProperty_GetNext(prop));                        
-                    }
-                    child = rbusObject_GetNext(child);
-                }
-                if (inParams)
-                    rbusObject_Release(inParams);
-                func->parameterValueChangeSignal(val, param_size, func->parameterValueChangeSignal_data);
-                rbusMessage_Init(response);
-                rbusMessage_SetInt32(*response, RBUS_ERROR_SUCCESS); //result
-                if (val)
-                {
-                    for(i = 0; i < param_size ; i++)
-                    {
-                        if(val[i].parameterName)
-                            AnscFreeMemory((void*)val[i].parameterName);
-                        if(val[i].oldValue)
-                            AnscFreeMemory((void*)val[i].oldValue);
-                        if(val[i].newValue)
-                            AnscFreeMemory((void*)val[i].newValue);
-                        if(val[i].subsystem_prefix)
-                            AnscFreeMemory((void*)val[i].subsystem_prefix);
-                    }
-                    bus_info->freefunc(val);
-                }
-                return DBUS_HANDLER_RESULT_HANDLED;
-            }
-        }
+        /* METHOD_RPC dispatch removed — GetHealth, GetAttributes, SetAttributes,
+           and parameterValueChangeSignal are now handled by registered
+           rbusMethodHandler_t callbacks via rbus_regDataElements(). */
         else if((!strncmp(method, METHOD_SUBSCRIBE, MAX_METHOD_NAME_LENGTH)) || (!strncmp(method, METHOD_UNSUBSCRIBE, MAX_METHOD_NAME_LENGTH)))
         {
             const char * sender = NULL;
@@ -2711,6 +2515,216 @@ ccsp_rbus_getHealth_handler
         return RBUS_ERROR_SUCCESS;
     }
     return RBUS_ERROR_INVALID_OPERATION;
+}
+
+static rbusError_t
+ccsp_rbus_getAttributes_handler
+(
+    rbusHandle_t handle,
+    char const* methodName,
+    rbusObject_t inParams,
+    rbusObject_t outParams,
+    rbusMethodAsyncHandle_t asyncHandle
+)
+{
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(methodName);
+    UNREFERENCED_PARAMETER(asyncHandle);
+
+    CCSP_MESSAGE_BUS_INFO *bus_info = s_bus_info;
+    CCSP_Base_Func_CB* func = (CCSP_Base_Func_CB*)bus_info->CcspBaseIf_func;
+    if (!func || !func->getParameterAttributes)
+        return RBUS_ERROR_INVALID_OPERATION;
+
+    char **parameterNames = 0;
+    parameterAttributeStruct_t **val = 0;
+    int size = 0, result = 0, i = 0, param_size = 0;
+    rbusProperty_t prop = rbusObject_GetProperties(inParams);
+    while(prop)
+    {
+        param_size++;
+        prop = rbusProperty_GetNext(prop);
+    }
+
+    if(param_size)
+    {
+        parameterNames = bus_info->mallocfunc(param_size*sizeof(char *));
+        memset(parameterNames, 0, param_size*sizeof(char *));
+    }
+
+    prop = rbusObject_GetProperties(inParams);
+    for(i = 0; i < param_size; i++)
+    {
+        parameterNames[i] = NULL;
+        parameterNames[i] = AnscCloneString((char *)rbusProperty_GetName(prop));
+        CcspTraceDebug(("getAttributes() parameterName[%d]: %s\n", i, parameterNames[i]));
+        prop = rbusProperty_GetNext(prop);
+    }
+
+    result = func->getParameterAttributes(parameterNames, param_size, &size, &val, func->getParameterAttributes_data);
+    if(parameterNames)
+    {
+        for(i = 0; i < param_size; i++)
+        {
+            if(parameterNames[i])
+                AnscFreeMemory(parameterNames[i]);
+        }
+        bus_info->freefunc(parameterNames);
+    }
+    if(result == CCSP_SUCCESS)
+    {
+        rbusValue_t value_size;
+        rbusValue_Init(&value_size);
+        rbusValue_SetInt32(value_size, size);
+        rbusObject_SetValue(outParams, "size", value_size);
+        rbusObject_t child_obj = NULL, previous = NULL;
+        for(i = 0; i < size; i++)
+        {
+            rbusObject_t Object = NULL;
+            rbusObject_Init(&Object, val[i]->parameterName);
+            rbusObject_SetPropertyBoolean(Object, "notificationChanged", val[i]->notificationChanged);
+            rbusObject_SetPropertyBoolean(Object, "notification", val[i]->notification);
+            rbusObject_SetPropertyInt32(Object, "access", val[i]->access);
+            rbusObject_SetPropertyBoolean(Object, "accessControlChanged", val[i]->accessControlChanged);
+            rbusObject_SetPropertyUInt32(Object, "accessControlBitmask", val[i]->accessControlBitmask);
+            rbusObject_SetPropertyUInt32(Object, "RequesterID", val[i]->RequesterID);
+
+            if(child_obj == NULL)
+                child_obj = Object;
+            if(previous != NULL)
+            {
+                rbusObject_SetNext(previous, Object);
+                rbusObject_Release(Object);
+            }
+            previous = Object;
+        }
+        rbusObject_SetChildren(outParams, child_obj);
+        rbusObject_Release(child_obj);
+    }
+    free_parameterAttributeStruct_t(bus_info, size, val);
+    return (rbusError_t)result;
+}
+
+static rbusError_t
+ccsp_rbus_setAttributes_handler
+(
+    rbusHandle_t handle,
+    char const* methodName,
+    rbusObject_t inParams,
+    rbusObject_t outParams,
+    rbusMethodAsyncHandle_t asyncHandle
+)
+{
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(methodName);
+    UNREFERENCED_PARAMETER(outParams);
+    UNREFERENCED_PARAMETER(asyncHandle);
+
+    CCSP_MESSAGE_BUS_INFO *bus_info = s_bus_info;
+    CCSP_Base_Func_CB* func = (CCSP_Base_Func_CB*)bus_info->CcspBaseIf_func;
+    if (!func || !func->setParameterAttributes)
+        return RBUS_ERROR_INVALID_OPERATION;
+
+    parameterAttributeStruct_t *parameterAttribute = 0;
+    int result = 0, i = 0, param_size = 0;
+    rbusProperty_t prop = rbusObject_GetProperties(inParams);
+    param_size = rbusProperty_GetInt32(prop);
+    if(param_size > 0)
+    {
+        parameterAttribute = bus_info->mallocfunc(param_size*sizeof(parameterAttributeStruct_t));
+        memset(parameterAttribute, 0, param_size*sizeof(parameterAttributeStruct_t));
+    }
+    rbusObject_t child = rbusObject_GetChildren(inParams);
+    for(i = 0; i < param_size; i++)
+    {
+        if(child)
+        {
+            parameterAttribute[i].parameterName = AnscCloneString((char *)rbusObject_GetName(child));
+            rbusProperty_t cprop = rbusObject_GetProperties(child);
+            parameterAttribute[i].notificationChanged  = rbusProperty_GetBoolean(cprop);
+            parameterAttribute[i].notification = rbusProperty_GetBoolean(cprop = rbusProperty_GetNext(cprop));
+            parameterAttribute[i].access = rbusProperty_GetInt32(cprop = rbusProperty_GetNext(cprop));
+            parameterAttribute[i].accessControlChanged = rbusProperty_GetBoolean(cprop = rbusProperty_GetNext(cprop));
+            parameterAttribute[i].accessControlBitmask = rbusProperty_GetUInt32(cprop = rbusProperty_GetNext(cprop));
+            parameterAttribute[i].RequesterID = rbusProperty_GetUInt32(rbusProperty_GetNext(cprop));
+        }
+        child = rbusObject_GetNext(child);
+    }
+    /* sessionId is not available via rbusMethodHandler_t — pass 0 */
+    result = func->setParameterAttributes(0, parameterAttribute, param_size, func->setParameterAttributes_data);
+    if(parameterAttribute)
+    {
+        for(i = 0; i < param_size; i++)
+        {
+            if(parameterAttribute[i].parameterName)
+                AnscFreeMemory(parameterAttribute[i].parameterName);
+        }
+        bus_info->freefunc(parameterAttribute);
+    }
+    return (rbusError_t)result;
+}
+
+static rbusError_t
+ccsp_rbus_paramValueChangeSignal_handler
+(
+    rbusHandle_t handle,
+    char const* methodName,
+    rbusObject_t inParams,
+    rbusObject_t outParams,
+    rbusMethodAsyncHandle_t asyncHandle
+)
+{
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(methodName);
+    UNREFERENCED_PARAMETER(outParams);
+    UNREFERENCED_PARAMETER(asyncHandle);
+
+    CCSP_MESSAGE_BUS_INFO *bus_info = s_bus_info;
+    CCSP_Base_Func_CB* func = (CCSP_Base_Func_CB*)bus_info->CcspBaseIf_func;
+    if (!func || !func->parameterValueChangeSignal)
+        return RBUS_ERROR_INVALID_OPERATION;
+
+    parameterSigStruct_t *val = 0;
+    int i = 0, param_size = 0;
+    rbusProperty_t prop = rbusObject_GetProperties(inParams);
+    param_size = rbusProperty_GetInt32(prop);
+    if(param_size > 0)
+    {
+        val = bus_info->mallocfunc(param_size*sizeof(parameterSigStruct_t));
+        memset(val, 0, param_size*sizeof(parameterSigStruct_t));
+    }
+    rbusObject_t child = rbusObject_GetChildren(inParams);
+    for(i = 0; i < param_size; i++)
+    {
+        if(child)
+        {
+            val[i].parameterName    = AnscCloneString((char *)rbusObject_GetName(child));
+            rbusProperty_t cprop    = rbusObject_GetProperties(child);
+            val[i].oldValue         = AnscCloneString((char *)rbusProperty_GetString(cprop, NULL));
+            val[i].newValue         = AnscCloneString((char *)rbusProperty_GetString(cprop = rbusProperty_GetNext(cprop), NULL));
+            val[i].type             = rbusProperty_GetInt32(cprop = rbusProperty_GetNext(cprop));
+            val[i].subsystem_prefix = AnscCloneString((char *)rbusProperty_GetString(cprop = rbusProperty_GetNext(cprop), NULL));
+            val[i].writeID          = rbusProperty_GetInt32(rbusProperty_GetNext(cprop));
+        }
+        child = rbusObject_GetNext(child);
+    }
+    func->parameterValueChangeSignal(val, param_size, func->parameterValueChangeSignal_data);
+    if(val)
+    {
+        for(i = 0; i < param_size; i++)
+        {
+            if(val[i].parameterName)
+                AnscFreeMemory((void*)val[i].parameterName);
+            if(val[i].oldValue)
+                AnscFreeMemory((void*)val[i].oldValue);
+            if(val[i].newValue)
+                AnscFreeMemory((void*)val[i].newValue);
+            if(val[i].subsystem_prefix)
+                AnscFreeMemory((void*)val[i].subsystem_prefix);
+        }
+        bus_info->freefunc(val);
+    }
+    return RBUS_ERROR_SUCCESS;
 }
 
 static int

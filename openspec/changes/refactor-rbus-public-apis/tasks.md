@@ -3,7 +3,7 @@
 - [x] 1.2 Create `ccsp_rbus_commit_handler()` — extract METHOD_COMMIT logic
 - [x] 1.3 Create `ccsp_rbus_addTableRow_handler()` — extract METHOD_ADDTBLROW logic
 - [x] 1.4 Create `ccsp_rbus_deleteTableRow_handler()` — extract METHOD_DELETETBLROW logic
-- [ ] 1.5 Verify simple handlers compile and pass existing tests
+- [x] 1.5 Verify simple handlers compile and pass existing tests
 
 ## 2. Extract Complex Method Handlers
 - [x] 2.1 Create `ccsp_rbus_getParameterNames_handler()` — extract METHOD_GETPARAMETERNAMES logic (includes access flag computation and rowNamesOnly filtering)
@@ -12,10 +12,10 @@
 - [x] 2.4 Verify complex handlers preserve identical CCSP callback invocation behavior
 
 ## 3. Extract RPC Sub-Method Handlers
-- [ ] 3.1 Create `ccsp_rbus_getAttributes_handler()` — extract METHOD_RPC GetAttributes logic; remove `rbusObject_initFromMessage`/`rbusObject_appendToMessage` usage
-- [ ] 3.2 Create `ccsp_rbus_setAttributes_handler()` — extract METHOD_RPC SetAttributes logic; remove `rbusObject_initFromMessage` usage
-- [ ] 3.3 Create `ccsp_rbus_paramValueChangeSignal_handler()` — extract METHOD_RPC parameterValueChangeSignal logic; remove `rbusObject_initFromMessage` usage
-- [ ] 3.4 Verify RPC sub-method handlers match current behavior
+- [x] 3.1 Create `ccsp_rbus_getAttributes_handler()` — extract METHOD_RPC GetAttributes logic; remove `rbusObject_initFromMessage`/`rbusObject_appendToMessage` usage
+- [x] 3.2 Create `ccsp_rbus_setAttributes_handler()` — extract METHOD_RPC SetAttributes logic; remove `rbusObject_initFromMessage` usage
+- [x] 3.3 Create `ccsp_rbus_paramValueChangeSignal_handler()` — extract METHOD_RPC parameterValueChangeSignal logic; remove `rbusObject_initFromMessage` usage
+- [x] 3.4 Verify RPC sub-method handlers match current behavior
 
 ## 4. Refactor Registration Flow
 - [ ] 4.1 Update `CCSP_Message_Bus_Init()` — remove `rbus_registerObj()` raw callback registration
@@ -36,7 +36,7 @@
 ## 7. Remove Private API Dependencies
 - [ ] 7.1 Remove `extern void rbusFilter_InitFromMessage(...)` declarations from all files
 - [ ] 7.2 Remove `extern void rbusEventData_appendToMessage(...)` declarations from all files
-- [ ] 7.3 Remove `extern void rbusObject_initFromMessage(...)` / `rbusObject_appendToMessage(...)` declarations
+- [x] 7.3 Remove `extern void rbusObject_initFromMessage(...)` / `rbusObject_appendToMessage(...)` declarations
 - [ ] 7.4 Remove `extern void rbusPropertyList_appendToMessage(...)` declaration
 - [ ] 7.5 Remove inline `void rbusFilter_AppendToMessage(...)` declarations from value_change and intervalsubscription files
 
