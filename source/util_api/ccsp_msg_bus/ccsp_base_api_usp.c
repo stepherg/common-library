@@ -30,6 +30,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifndef BOOLEAN
+typedef unsigned char BOOLEAN;
+#endif
+
 /* Re-declare the shim handle from ccsp_message_bus_usp.c */
 typedef struct _CCSP_USP_BUS_HANDLE {
     /* Common prefix — must match CCSP_MESSAGE_BUS_INFO layout */
@@ -1037,4 +1041,28 @@ int getPartnerId(char* partnerID)
         return -1;
     partnerID[0] = '\0';
     return 0;
+}
+
+BOOLEAN waitConditionReady(
+    void* hMBusHandle,
+    const char* dst_component_id,
+    char* dbus_path,
+    char* src_component_id)
+{
+#define WAIT_MAX_TIME 10
+#define WAIT_INTERVAL 2000
+#define CCSP_COMMON_COMPONENT_HEALTH_Green 3
+    int times = 0;
+    int ret = 0;
+    int health = 0;
+
+    while (times++ < WAIT_MAX_TIME) {
+        ret = CcspBaseIf_getHealth(hMBusHandle, dst_component_id, dbus_path, &health);
+        if (health != CCSP_COMMON_COMPONENT_HEALTH_Green || ret != CCSP_SUCCESS) {
+            CCSP_Msg_SleepInMilliSeconds(WAIT_INTERVAL);
+        } else {
+            return 1; /* true */
+        }
+    }
+    return 0; /* false — timed out */
 }
