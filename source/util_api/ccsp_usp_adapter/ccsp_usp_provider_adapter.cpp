@@ -48,7 +48,7 @@ static std::string read_socket_path(const char* config_file)
     // Default USP broker socket path
     // TODO: Parse config_file for actual socket path
     (void)config_file;
-    return "/var/run/usp/broker.sock";
+    return "/tmp/usp/broker_agent_path";
 }
 
 extern "C" {

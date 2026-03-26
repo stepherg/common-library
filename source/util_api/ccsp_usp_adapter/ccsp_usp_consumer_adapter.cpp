@@ -42,7 +42,7 @@ struct CcspUspConsumerHandle {
 static std::string read_socket_path_consumer(const char* config_file)
 {
     (void)config_file;
-    return "/var/run/usp/broker.sock";
+    return "/tmp/usp/broker_controller_path";
 }
 
 extern "C" {
