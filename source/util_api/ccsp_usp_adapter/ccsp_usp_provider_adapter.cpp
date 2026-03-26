@@ -74,7 +74,7 @@ int CcspUspAdapter_ProviderInit(
     std::memset(&handle->callbacks, 0, sizeof(handle->callbacks));
 
     usp::SessionConfig config;
-    config.endpoint_id = handle->component_id;
+    config.endpoint_id = ccsp_usp_make_endpoint_id(handle->component_id);
     config.socket_path = handle->socket_path;
 
     auto result = usp::AgentSession::create(config);

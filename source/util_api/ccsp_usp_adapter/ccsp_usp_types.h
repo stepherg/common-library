@@ -182,6 +182,33 @@ usp::ControllerSession* ccsp_usp_get_controller_session(void* bus_handle);
  */
 void ccsp_usp_resubscribe_all(usp::ControllerSession* session);
 
+/**
+ * Build a USP endpoint ID by prepending the configured prefix to a component ID.
+ */
+std::string ccsp_usp_make_endpoint_id(const std::string& component_id);
+
 #endif /* __cplusplus */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * Set the prefix prepended to component_id when constructing USP endpoint IDs.
+ * Must be called before CcspUspAdapter_ProviderInit / ConsumerInit.
+ * Pass NULL or "" to disable prefixing.
+ *
+ * Default: "rbus-ctrl::"
+ */
+void CcspUspAdapter_SetEndpointIdPrefix(const char* prefix);
+
+/**
+ * Get the current endpoint ID prefix (never returns NULL).
+ */
+const char* CcspUspAdapter_GetEndpointIdPrefix(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CCSP_USP_TYPES_H */

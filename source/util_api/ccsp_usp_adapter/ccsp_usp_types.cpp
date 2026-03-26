@@ -29,6 +29,29 @@
 #include <string>
 #include <vector>
 
+/* --- Endpoint ID prefix --- */
+
+static const char* s_endpoint_id_prefix = "rbus-ctrl::";
+
+extern "C" {
+
+void CcspUspAdapter_SetEndpointIdPrefix(const char* prefix)
+{
+    s_endpoint_id_prefix = (prefix && prefix[0]) ? prefix : "";
+}
+
+const char* CcspUspAdapter_GetEndpointIdPrefix(void)
+{
+    return s_endpoint_id_prefix;
+}
+
+} // extern "C"
+
+std::string ccsp_usp_make_endpoint_id(const std::string& component_id)
+{
+    return std::string(s_endpoint_id_prefix) + component_id;
+}
+
 // Re-declare the consumer handle struct so we can extract the ControllerSession.
 // This must match the definition in ccsp_usp_consumer_adapter.cpp.
 struct CcspUspConsumerHandle {
