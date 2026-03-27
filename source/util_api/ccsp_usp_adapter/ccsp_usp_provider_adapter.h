@@ -57,7 +57,7 @@ void CcspUspAdapter_ProviderExit(void* bus_handle);
  * Register a data model namespace with the USP broker.
  *
  * Converts name_spaceType_t arrays and CCSP_Base_Func_CB callbacks into
- * usp::Schema + usp::ObjectHandlers and registers via AgentSession::provide() + handle().
+ * usp::DataObjects into a Registration and registers via AgentSession::register_objects_sync().
  *
  * @param bus_handle        Handle from CcspUspAdapter_ProviderInit
  * @param dst_component_id  Ignored (USP handles routing)
@@ -83,7 +83,7 @@ int CcspUspAdapter_RegisterCapabilities(
 /**
  * Set the provider-side callback table.
  *
- * Stores the CCSP_Base_Func_CB callbacks so that USP ObjectHandlers can delegate
+ * Stores the CCSP_Base_Func_CB callbacks so that USP DataObject handlers can delegate
  * get/set/add/delete operations to the component's existing handlers.
  *
  * @param bus_handle    Handle from CcspUspAdapter_ProviderInit

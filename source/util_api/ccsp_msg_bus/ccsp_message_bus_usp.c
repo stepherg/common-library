@@ -152,7 +152,7 @@ int CCSP_Message_Bus_Register_Path2(
     void* funcptr,
     void* user_data)
 {
-    /* No-op: USP uses provide() + handle() for path registration */
+    /* No-op: USP uses register_objects_sync() for path registration */
     (void)bus_handle; (void)path; (void)funcptr; (void)user_data;
     return CCSP_Message_Bus_OK;
 }

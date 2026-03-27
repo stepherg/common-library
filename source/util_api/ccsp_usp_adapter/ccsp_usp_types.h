@@ -151,18 +151,12 @@ inline std::pair<std::string, std::string> split_param_path(const std::string& f
 }
 
 /**
- * Build schema and object handlers from CCSP namespace array and callback table.
+ * Build a USP Registration from CCSP namespace array and callback table.
  *
- * Returns a vector of (root_path, Schema, map<obj_path, ObjectHandlers>) for
- * registration via AgentSession::provide() and handle().
+ * Creates DataObjects (ObjectDef + handlers) for each object path and
+ * collects them into a Registration for AgentSession::register_objects_sync().
  */
-using SchemaHandlerEntry = std::tuple<
-    std::string,
-    usp::Schema,
-    std::vector<std::pair<std::string, usp::ObjectHandlers>>
->;
-
-std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
+usp::Registration ccsp_usp_build_registration(
     name_spaceType_t* name_space,
     int size,
     CCSP_Base_Func_CB* callbacks,

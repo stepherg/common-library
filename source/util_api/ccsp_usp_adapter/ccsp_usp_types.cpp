@@ -25,7 +25,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -103,33 +102,6 @@ static bool is_multi_instance_path(const std::string& obj_path)
 }
 
 /**
- * Find the longest common prefix among a set of object paths,
- * ending at a dot boundary.
- */
-static std::string find_root_path(const std::set<std::string>& object_paths)
-{
-    if (object_paths.empty())
-        return "";
-
-    std::string root = *object_paths.begin();
-    for (auto& p : object_paths) {
-        size_t i = 0;
-        while (i < root.size() && i < p.size() && root[i] == p[i])
-            i++;
-        root = root.substr(0, i);
-    }
-
-    // Trim to last dot boundary
-    auto last_dot = root.rfind('.');
-    if (last_dot != std::string::npos)
-        root = root.substr(0, last_dot + 1);
-    else
-        root = "";
-
-    return root;
-}
-
-/**
  * Struct to accumulate object info during namespace parsing.
  */
 struct ObjectInfo {
@@ -138,7 +110,7 @@ struct ObjectInfo {
     std::vector<usp::ParamDef> params;
 };
 
-std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
+usp::Registration ccsp_usp_build_registration(
     name_spaceType_t* name_space,
     int size,
     CCSP_Base_Func_CB* callbacks,
@@ -146,10 +118,10 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
     CCSP_MESSAGE_BUS_FREE freefunc,
     usp::AgentSession* session)
 {
-    std::vector<SchemaHandlerEntry> result;
+    usp::Registration registration;
 
     if (!name_space || size <= 0 || !callbacks)
-        return result;
+        return registration;
 
     // Phase 1: Parse all namespaces and group by object path
     std::map<std::string, ObjectInfo> objects;
@@ -178,29 +150,9 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
     }
 
     if (objects.empty())
-        return result;
+        return registration;
 
-    // Phase 2: Determine root path
-    std::set<std::string> all_paths;
-    for (auto& [path, _] : objects)
-        all_paths.insert(path);
-
-    std::string root_path = find_root_path(all_paths);
-
-    // Phase 3: Build Schema
-    usp::Schema schema;
-    for (auto& [path, obj] : objects) {
-        usp::ObjectDef odef;
-        odef.path = path;
-        odef.is_multi_instance = obj.is_multi;
-        odef.access = obj.is_multi
-            ? usp::ObjectAccess::AddDelete
-            : usp::ObjectAccess::ReadOnly;
-        odef.params = obj.params;
-        schema.object(std::move(odef));
-    }
-
-    // Phase 4: Build ObjectHandlers for each object path
+    // Phase 2: Build DataObjects with handlers for each object path
     // Capture callback pointers and alloc/free for the closures
     auto* get_cb = callbacks->getParameterValues;
     auto* get_data = callbacks->getParameterValues_data;
@@ -215,22 +167,27 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
     auto mfunc = mallocfunc;
     auto ffunc = freefunc;
 
-    std::vector<std::pair<std::string, usp::ObjectHandlers>> handler_vec;
-
     for (auto& [obj_path, obj] : objects) {
-        usp::ObjectHandlers handlers;
+        usp::DataObject data_obj;
         std::string captured_path = obj_path;
 
-        // --- get handler ---
+        // Build the ObjectDef
+        data_obj.def.path = obj_path;
+        data_obj.def.is_multi_instance = obj.is_multi;
+        data_obj.def.access = obj.is_multi
+            ? usp::ObjectAccess::AddDelete
+            : usp::ObjectAccess::ReadOnly;
+        data_obj.def.params = obj.params;
+
+        // --- on_get handler ---
         if (get_cb) {
-            handlers.get = [get_cb, get_data, mfunc, ffunc, captured_path](
+            data_obj.on_get = [get_cb, get_data, mfunc, ffunc, captured_path](
                 const usp::ObjectContext& ctx) -> usp::ParamMap
             {
                 usp::ParamMap pmap;
 
                 // Reconstruct the full concrete path from the object template + instances
                 std::string concrete_path = captured_path;
-                // Replace {i} segments with actual instance numbers from ctx
                 size_t inst_idx = 0;
                 size_t pos = 0;
                 while ((pos = concrete_path.find("{i}", pos)) != std::string::npos
@@ -249,7 +206,6 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
                 if (ret == CCSP_SUCCESS && vals) {
                     for (int i = 0; i < val_size; i++) {
                         if (vals[i] && vals[i]->parameterName && vals[i]->parameterValue) {
-                            // Extract just the param name (after the last dot)
                             std::string full_name = vals[i]->parameterName;
                             auto dot = full_name.rfind('.');
                             std::string pname = (dot != std::string::npos)
@@ -268,14 +224,13 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
             };
         }
 
-        // --- set handler ---
+        // --- on_set handler ---
         if (set_cb) {
-            handlers.set = [set_cb, set_data, mfunc, ffunc, captured_path, session](
+            data_obj.on_set = [set_cb, set_data, mfunc, ffunc, captured_path, session](
                 const usp::ObjectContext& ctx,
                 const std::string& param,
                 const std::string& value) -> usp::Status
             {
-                // Reconstruct concrete path
                 std::string concrete_path = captured_path;
                 size_t inst_idx = 0;
                 size_t pos = 0;
@@ -303,7 +258,6 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
                 if (ret != CCSP_SUCCESS)
                     return usp::Status(ccsp_to_usp_error(ret), "set failed");
 
-                // Auto-emit value change notification
                 if (session)
                     session->emit_value_change(full_path, value);
 
@@ -311,14 +265,13 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
             };
         }
 
-        // --- instances handler (multi-instance objects only) ---
+        // --- on_instances handler (multi-instance objects only) ---
         if (obj.is_multi && names_cb) {
-            handlers.instances = [names_cb, names_data, mfunc, ffunc, captured_path](
+            data_obj.on_instances = [names_cb, names_data, mfunc, ffunc, captured_path](
                 const usp::ObjectContext& ctx) -> std::vector<uint32_t>
             {
                 std::vector<uint32_t> instances;
 
-                // Reconstruct concrete object path
                 std::string concrete_path = captured_path;
                 size_t inst_idx = 0;
                 size_t pos = 0;
@@ -340,7 +293,6 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
                     for (int i = 0; i < info_size; i++) {
                         if (infos[i] && infos[i]->parameterName) {
                             std::string name = infos[i]->parameterName;
-                            // Extract trailing instance number
                             if (!name.empty() && name.back() == '.')
                                 name.pop_back();
                             auto dot = name.rfind('.');
@@ -363,13 +315,12 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
             };
         }
 
-        // --- add handler (multi-instance objects only) ---
+        // --- on_add handler (multi-instance objects only) ---
         if (obj.is_multi && add_cb) {
-            handlers.add = [add_cb, add_data, captured_path, session](
+            data_obj.on_add = [add_cb, add_data, captured_path, session](
                 const usp::ObjectContext& ctx,
                 const std::map<std::string, std::string>& /*params*/) -> usp::Result<uint32_t>
             {
-                // Reconstruct concrete object path
                 std::string concrete_path = captured_path;
                 size_t inst_idx = 0;
                 size_t pos = 0;
@@ -387,7 +338,6 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
                 if (ret != CCSP_SUCCESS)
                     return usp::Result<uint32_t>(ccsp_to_usp_error(ret), "add failed");
 
-                // Auto-emit object creation notification
                 if (session) {
                     std::string instance_path = concrete_path +
                         std::to_string(instance_number) + ".";
@@ -398,12 +348,11 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
             };
         }
 
-        // --- del handler (multi-instance objects only) ---
+        // --- on_del handler (multi-instance objects only) ---
         if (obj.is_multi && del_cb) {
-            handlers.del = [del_cb, del_data, captured_path, session](
+            data_obj.on_del = [del_cb, del_data, captured_path, session](
                 const usp::ObjectContext& ctx) -> usp::Status
             {
-                // Reconstruct concrete instance path from ctx.instances
                 std::string concrete_path = captured_path;
                 size_t inst_idx = 0;
                 size_t pos = 0;
@@ -415,14 +364,12 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
                     inst_idx++;
                 }
 
-                // Capture path before deletion for notification
                 std::string del_path = concrete_path;
 
                 int ret = del_cb(0, const_cast<char*>(concrete_path.c_str()), del_data);
                 if (ret != CCSP_SUCCESS)
                     return usp::Status(ccsp_to_usp_error(ret), "del failed");
 
-                // Auto-emit object deletion notification
                 if (session)
                     session->emit_object_deletion(del_path);
 
@@ -430,9 +377,20 @@ std::vector<SchemaHandlerEntry> ccsp_usp_build_schema_and_handlers(
             };
         }
 
-        handler_vec.emplace_back(obj_path, std::move(handlers));
+        // --- on_operate handler ---
+        // CCSP uses set-parameter-to-trigger-action patterns rather than
+        // explicit command dispatch. Return "not supported" by default.
+        data_obj.on_operate = [](const usp::OperateRequest& req) -> usp::OperateResponse {
+            usp::OperateResponse resp;
+            resp.result = usp::OperateResponse::CommandFailure{
+                usp::ErrorCode::OperateNotAllowed,
+                "Command not supported via CCSP adapter: " + req.command
+            };
+            return resp;
+        };
+
+        registration.add(std::move(data_obj));
     }
 
-    result.emplace_back(root_path, std::move(schema), std::move(handler_vec));
-    return result;
+    return registration;
 }

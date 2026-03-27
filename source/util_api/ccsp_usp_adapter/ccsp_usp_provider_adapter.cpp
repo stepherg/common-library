@@ -134,7 +134,7 @@ int CcspUspAdapter_RegisterBase(
     if (!bus_handle)
         return CCSP_FAILURE;
 
-    // In USP, registration happens via provide() + handle().
+    // In USP, registration happens via register_objects_sync().
     // RegisterBase is a no-op — the session is already connected.
     return CCSP_SUCCESS;
 }
@@ -159,35 +159,19 @@ int CcspUspAdapter_RegisterCapabilities(
 
     auto* handle = static_cast<CcspUspProviderHandle*>(bus_handle);
 
-    // Build schema from namespace array
-    auto schema_handlers = ccsp_usp_build_schema_and_handlers(
+    // Build Registration from namespace array
+    auto registration = ccsp_usp_build_registration(
         name_space, size, &handle->callbacks, handle->mallocfunc, handle->freefunc,
         handle->session.get());
 
-    for (auto& [path, schema, obj_handlers] : schema_handlers) {
-        usp::AgentHandlers agent_handlers;
+    auto result = handle->session->register_objects_sync(std::move(registration));
+    if (!result)
+        return ccsp_usp_error_to_ccsp(result.error_code());
 
-        // Default on_operate returns "not supported" for commands.
-        // CCSP uses set-parameter-to-trigger-action patterns rather than
-        // explicit command dispatch. Components can override via custom handler.
-        agent_handlers.on_operate = [](const usp::OperateRequest& req) -> usp::OperateResponse {
-            usp::OperateResponse resp;
-            resp.result = usp::OperateResponse::CommandFailure{
-                usp::ErrorCode::OperateNotAllowed,
-                "Command not supported via CCSP adapter: " + req.command
-            };
-            return resp;
-        };
-
-        auto status = handle->session->provide(path, std::move(schema), agent_handlers);
-        if (!status)
-            return ccsp_usp_error_to_ccsp(status.error_code());
-
-        for (auto& [obj_path, handlers] : obj_handlers) {
-            auto h_status = handle->session->handle(obj_path, std::move(handlers));
-            if (!h_status)
-                return ccsp_usp_error_to_ccsp(h_status.error_code());
-        }
+    // Check for per-path registration failures
+    for (auto& pr : result.value().path_results) {
+        if (!pr.success)
+            return CCSP_FAILURE;
     }
 
     return CCSP_SUCCESS;
