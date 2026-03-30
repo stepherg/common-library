@@ -156,13 +156,8 @@ int CcspUspAdapter_RegisterCapabilities(
 
     if (!bus_handle || !name_space || size <= 0)
         return CCSP_FAILURE;
-
-    fprintf(stderr, "CcspUspAdapter_RegisterCapabilities:  handle: '%p', componentName: '%s'\n", bus_handle, component_name);
     
     auto* handle = static_cast<CcspUspProviderHandle*>(bus_handle);
-
-    fprintf(stderr, "handle->socket_path: '%s'\n", handle->socket_path.c_str());
-    fprintf(stderr, "CcspUspAdapter_RegisterCapabilities:  handle: '%p', componentName: '%s'\n", bus_handle, component_name);
 
     // Build Registration from namespace array
     auto registration = ccsp_usp_build_registration(
