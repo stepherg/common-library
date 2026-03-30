@@ -67,7 +67,7 @@ int CcspUspAdapter_ConsumerInit(
     handle->freefunc = freefunc ? freefunc : (CCSP_MESSAGE_BUS_FREE)free;
 
     usp::SessionConfig config;
-    config.endpoint_id = ccsp_usp_make_endpoint_id(handle->component_id);
+    config.endpoint_id = handle->component_id;
     config.socket_path = handle->socket_path;
 
     auto result = usp::ControllerSession::create(config);

@@ -81,7 +81,9 @@ int CCSP_Message_Bus_Init(
     h->freefunc = ffunc;
 
     /* Initialize provider session */
-    int ret = CcspUspAdapter_ProviderInit(component_id, config_file,
+    char provider_id[256];
+    snprintf(provider_id, sizeof(provider_id), "rbus-agent::%s", component_id);
+    int ret = CcspUspAdapter_ProviderInit(provider_id, config_file,
                                           &h->provider_handle, mfunc, ffunc);
     if (ret != CCSP_SUCCESS) {
         ffunc(h);
@@ -89,7 +91,9 @@ int CCSP_Message_Bus_Init(
     }
 
     /* Initialize consumer session */
-    ret = CcspUspAdapter_ConsumerInit(component_id, config_file,
+    char consumer_id[256];
+    snprintf(consumer_id, sizeof(consumer_id), "rbus-ctrl::%s", component_id);
+    ret = CcspUspAdapter_ConsumerInit(consumer_id, config_file,
                                       &h->consumer_handle, mfunc, ffunc);
     if (ret != CCSP_SUCCESS) {
         CcspUspAdapter_ProviderExit(h->provider_handle);

@@ -74,7 +74,7 @@ int CcspUspAdapter_ProviderInit(
     std::memset(&handle->callbacks, 0, sizeof(handle->callbacks));
 
     usp::SessionConfig config;
-    config.endpoint_id = ccsp_usp_make_endpoint_id(handle->component_id);
+    config.endpoint_id = handle->component_id;
     config.socket_path = handle->socket_path;
 
     auto result = usp::AgentSession::create(config);
@@ -157,7 +157,12 @@ int CcspUspAdapter_RegisterCapabilities(
     if (!bus_handle || !name_space || size <= 0)
         return CCSP_FAILURE;
 
+    fprintf(stderr, "CcspUspAdapter_RegisterCapabilities:  handle: '%p', componentName: '%s'\n", bus_handle, component_name);
+    
     auto* handle = static_cast<CcspUspProviderHandle*>(bus_handle);
+
+    fprintf(stderr, "handle->socket_path: '%s'\n", handle->socket_path.c_str());
+    fprintf(stderr, "CcspUspAdapter_RegisterCapabilities:  handle: '%p', componentName: '%s'\n", bus_handle, component_name);
 
     // Build Registration from namespace array
     auto registration = ccsp_usp_build_registration(
@@ -169,12 +174,17 @@ int CcspUspAdapter_RegisterCapabilities(
         return ccsp_usp_error_to_ccsp(result.error_code());
 
     // Check for per-path registration failures
+    bool any_success = false;
     for (auto& pr : result.value().path_results) {
-        if (!pr.success)
-            return CCSP_FAILURE;
+        if (pr.success) {
+            any_success = true;
+        } else {
+            fprintf(stderr, "CcspUspAdapter_RegisterCapabilities: path '%s' rejected: %s\n",
+                    pr.requested_path.c_str(), pr.err_msg.c_str());
+        }
     }
 
-    return CCSP_SUCCESS;
+    return any_success ? CCSP_SUCCESS : CCSP_FAILURE;
 }
 
 int CcspUspAdapter_SendSystemReadySignal(void* bus_handle)

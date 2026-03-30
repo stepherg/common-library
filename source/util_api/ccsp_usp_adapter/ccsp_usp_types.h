@@ -179,7 +179,6 @@ void ccsp_usp_resubscribe_all(usp::ControllerSession* session);
 /**
  * Build a USP endpoint ID by prepending the configured prefix to a component ID.
  */
-std::string ccsp_usp_make_endpoint_id(const std::string& component_id);
 
 #endif /* __cplusplus */
 
