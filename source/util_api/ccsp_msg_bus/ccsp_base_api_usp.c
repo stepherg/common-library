@@ -435,7 +435,8 @@ int CcspBaseIf_GetNextLevelInstances(
     (void)pObjectName;
     if (pNums) *pNums = 0;
     if (pNumArray) *pNumArray = NULL;
-    return CCSP_SUCCESS;
+    /* Return FAILURE so callers don't attempt to free a NULL list via bus_handle->freefunc */
+    return CCSP_FAILURE;
 }
 
 int CcspBaseIf_getObjType(

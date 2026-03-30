@@ -102,7 +102,7 @@ int CCSP_Message_Bus_Init(
     }
 
     *bus_handle = h;
-    return CCSP_Message_Bus_OK;
+    return 0;
 }
 
 void CCSP_Message_Bus_Exit(void* bus_handle)
