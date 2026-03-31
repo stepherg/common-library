@@ -137,6 +137,9 @@ int CcspUspAdapter_GetParameterValues(
     }
 
     *val_size = static_cast<int>(all_params.size());
+    if (*val_size == 0)
+        return CCSP_FAILURE;
+
     *val = static_cast<parameterValStruct_t**>(
         alloc(sizeof(parameterValStruct_t*) * all_params.size()));
     if (!*val)

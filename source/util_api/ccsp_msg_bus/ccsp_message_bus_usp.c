@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/select.h>
-
+#include <stdio.h>
 /*
  * Internal state: tracks whether the handle is provider or consumer.
  * For the unified init, we create both a provider and consumer session
